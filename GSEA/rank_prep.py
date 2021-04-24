@@ -4,7 +4,8 @@ import pandas as pd
 
 group='CN_Dementia'
 features = 2000
-df = pd.read_csv('t_test_geneExpr_Probefiltered.csv')
+rank_file = 't_test_geneExpr_Probefiltered.csv'
+df = pd.read_csv(rank_file)
 ttest = df.sort_values(group).sort_values(group+'_c').iloc[0:features] #suffix _c to use the FDR corrected p values
 
 print(ttest.head())
