@@ -1,0 +1,19 @@
+#Manually inserted key results here:
+
+April22/2021
+VGG11:
+FOR --model BaselineView  --feat_fusion baseline --fusion_axis 0 --channel_pool approx
+ACC 0.8036, AUC 0.7994, F1 0.7755, Prec 0.7917, Recall 0.7600, AP 0.7088
+
+FOR --model BaselineView  --feat_fusion early --channel_pool approx
+ACC 0.7857, AUC 0.7258, F1 0.7647, Prec 0.7500, Recall 0.7800, AP 0.6832
+
+FOR --model MultiView --loss_type single --feat_fusion late --channel_pool approx
+ACC 0.8214, AUC 0.7819, F1 0.8039, Prec 0.7885, Recall 0.8200, AP 0.7269
+
+FOR --model MultiView --loss_type combined --feat_fusion late --channel_pool approx
+ACC 0.7946, AUC 0.7652, F1 0.7527, Prec 0.8140, Recall 0.7000, AP 0.7037
+
+#VGG11 seems better than Res18
+#Slight imporvement with MultiView
+#Late fusion better than early fusion.
