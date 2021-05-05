@@ -23,7 +23,7 @@ print("EXPERIMENT LOG FOR:",groups)
 print('\n')
 
 #Number of top SNPs to take as features
-N = 50
+N = 500
 ########################################################################################
 #                       DATA PREPERATION
 ########################################################################################
@@ -263,6 +263,6 @@ imp_df['features'] = list(X.columns)
 imp_df['importance'] = imp
 
 imp_df_sorted = imp_df.sort_values(by=['importance'],ascending=False)
-imp_df_sorted.to_csv('./results/'+groups+'_Classification_ranked_'+str(final_N)+'Genomic_features.csv')
+imp_df_sorted.to_csv('./results/'+groups+'_Classification_ranked_'+str(final_N)+'_Genomic_features.csv')
 
 print("END OF THE EXPERIMENT")
