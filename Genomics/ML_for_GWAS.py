@@ -22,17 +22,18 @@ groups = 'CN_AD'
 print("EXPERIMENT LOG FOR:",groups)
 print('\n')
 
+data_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/Genomics/'
 #Number of top SNPs to take as features
 N = 500
 ########################################################################################
 #                       DATA PREPERATION
 ########################################################################################
-df = pd.read_csv('./data/ADNIMERGE.csv',low_memory=False)
+df = pd.read_csv(os.path.join(data_path,'data','ADNIMERGE.csv'),low_memory=False)
 df_bl = df[df['VISCODE']=='bl']
 print('Overall label distribution on ADNIMERGE.csv')
 print(Counter(df[df['VISCODE']=='bl']['DX_bl']))
 
-with open('./data/GWAS_CN_AD12.fam','r') as infile:
+with open(os.path.join(data_path,'data','GWAS_CN_AD12.fam'),'r') as infile:
     text = infile.read().strip().split('\n')
 
 PTID = [line.strip().split(' ')[1] for line in text]
@@ -51,7 +52,7 @@ def sequence_parser(t):
     return Geno
 
 data = []
-with open('./data/GWAS_CN_AD12.ped','r') as infile:   
+with open(os.path.join(data_path,'data','GWAS_CN_AD12.ped'),'r') as infile:   
     text = infile.read().strip().split('\n')
     for line in text:
         gene = line.split(' ')[6:]
@@ -65,15 +66,15 @@ with open('./data/GWAS_CN_AD12.ped','r') as infile:
         data.append(output)
 
 
-with open('./data/top2000_snps.txt') as infile:
+with open(os.path.join(data_path,'data','top2000_snps.txt'),'r') as infile:
     snps = infile.read().strip().split('\n')
 
 column_names = ['PTID','AGE','GENDER','EDU']+['DIAG']+snps
 
 df_final = pd.DataFrame(data,columns=column_names)
-df_final.to_csv('./data/GWAS12_data_Dx_bl.csv')
+df_final.to_csv(os.path.join(data_path,'data','GWAS12_data_Dx_bl.csv'))
 
-df_final = pd.read_csv('./data/GWAS_data_Dx_bl.csv',na_values=["00"])
+df_final = pd.read_csv(os.path.join(data_path,'data','GWAS_data_Dx_bl.csv'),na_values=["00"])
 df_final = df_final.iloc[:, 0:N+6] #Only top N snps
 df_final = df_final.drop(columns=['Unnamed: 0'])
 df_final.dropna(inplace=True)
@@ -195,7 +196,7 @@ for scorer, color in zip(sorted(scoring), ['g', 'k']):
 
 plt.legend(loc="best")
 plt.grid(False)
-plt.savefig('./results/Grid_search_Using_Genomic_for:'+groups+'.png')
+plt.savefig(os.path.join(data_path,'results','Grid_search_Using_Genomic_for:'+groups+'.png'))
 
 ###########################################################################################
 #                           FINAL RUN AND SAVE RESULTS
@@ -250,7 +251,7 @@ ax.set(xlim=[-0.05, 1.05], ylim=[-0.05, 1.05],
        title="Receiver operating characteristic")
 ax.legend(loc="lower right")
 plt.show()
-plt.savefig('./results/ROC_for:'+groups+'.png')
+plt.savefig(os.path.join(data_path,'results','ROC_for:'+groups+'.png'))
 print('for total of ',final_N,"Features")
 print('Mean Balanced Accuracy:',sum(acc)/len(acc))
 print('Mean AUC:',sum(aucs)/len(aucs))
@@ -263,6 +264,6 @@ imp_df['features'] = list(X.columns)
 imp_df['importance'] = imp
 
 imp_df_sorted = imp_df.sort_values(by=['importance'],ascending=False)
-imp_df_sorted.to_csv('./results/'+groups+'_Classification_ranked_'+str(final_N)+'_Genomic_features.csv')
+imp_df_sorted.to_csv(os.path.join(data_path,'results',groups+'_Classification_ranked_'+str(final_N)+'_Genomic_features.csv'))
 
 print("END OF THE EXPERIMENT")

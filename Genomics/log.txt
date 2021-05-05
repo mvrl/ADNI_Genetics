@@ -1,0 +1,11 @@
+EXPERIMENT LOG FOR: CN_AD
+
+
+Overall label distribution on ADNIMERGE.csv
+Counter({'LMCI': 651, 'CN': 518, 'AD': 398, 'EMCI': 389, 'SMC': 301, nan: 12})
+Label distribution on GWAS generated file
+Counter({'CN': 325, 'AD': 195})
+Label distribution on GWAS generated file after dropping Missing individuals
+Counter({'CN': 257, 'AD': 146})
+Shape of final data BEFORE FEATURE SELECTION
+(403, 1499) (403,)

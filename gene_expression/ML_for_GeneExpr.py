@@ -32,8 +32,7 @@ def prepare_targets(y):
     y = le.transform(y)
     return y
 
-#Very inefficient approach! but is easier to visualize in my head
-def data_prep(df): #This takes the dataframe and returns the one hot encoded expansion of input features
+def data_prep(df): 
     target = prepare_targets(list(df.DX_bl))
     df1 = df.drop(columns=['Unnamed: 0','DX_bl']).reset_index(drop=True) #Patient ID and DIAG not needed  
     return df1, target.ravel()
@@ -50,7 +49,7 @@ def train_ADNI(groups='CN_AD',features=1000):
     N = features
     print("EXPERIMENT LOG FOR:",groups)
     print('\n')
-    data_path = '/Users/subashkhanal/Desktop/BMI633/ADNI_Genetics/gene_expression/data'
+    data_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/data'
     classes = groups.split('_')
     #
     #Gene ranking based on ttest
@@ -59,7 +58,6 @@ def train_ADNI(groups='CN_AD',features=1000):
     #CHANGE THE LINE ABOVE ACCORDINGLY FOR DIFFERENT CLASSES
 
     #Gene Expression Data
-    data_path = '/Users/subashkhanal/Desktop/BMI633/ADNI_Genetics/gene_expression/data/'
     df = pd.read_csv(os.path.join(data_path,'Unfiltered_gene_expr_dx.csv'),low_memory=False)
     Gene_expr = df[['Unnamed: 0','AGE','PTGENDER','PTEDUCAT','DX_bl']+list(important_probes)]
     df = Gene_expr
@@ -173,7 +171,7 @@ def train_ADNI(groups='CN_AD',features=1000):
 
     plt.legend(loc="best")
     plt.grid(False)
-    plt.savefig('./results/Grid_search_Using_GeneExpr_for:'+groups+'.png')
+    plt.savefig(os.path.join('/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression','results','Grid_search_Using_GeneExpr_for:'+groups+'.png'))
 
     ###########################################################################################
     #                           FINAL RUN AND SAVE RESULTS
@@ -228,7 +226,7 @@ def train_ADNI(groups='CN_AD',features=1000):
         title="Receiver operating characteristic")
     ax.legend(loc="lower right")
     plt.show()
-    plt.savefig('./results/ROC_for:'+groups+'.png')
+    plt.savefig(os.path.join(data_path,'results','ROC_for:'+groups+'.png'))
     print('for total of ',final_N,"Features")
     print('Mean Balanced Accuracy:',sum(acc)/len(acc))
     print('Mean AUC:',sum(aucs)/len(aucs))
@@ -241,7 +239,7 @@ def train_ADNI(groups='CN_AD',features=1000):
     imp_df['importance'] = imp
 
     imp_df_sorted = imp_df.sort_values(by=['importance'],ascending=False)
-    imp_df_sorted.to_csv('./results/'+groups+'_Classification_ranked_'+str(final_N)+'_GeneExpr_features.csv')
+    imp_df_sorted.to_csv(os.path.join(data_path,'results',groups+'_Classification_ranked_'+str(final_N)+'_GeneExpr_features.csv'))
 
     print("END OF THE EXPERIMENT")
 
