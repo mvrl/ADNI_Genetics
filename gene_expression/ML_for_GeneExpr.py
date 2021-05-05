@@ -22,7 +22,7 @@ from sklearn.feature_selection import RFECV
 from easydict import EasyDict as edict
 import itertools
 overall_groups = ['CN_AD','CN_EMCI','CN_LMCI','EMCI_LMCI','EMCI_AD','LMCI_AD']
-N=1000
+
 ############################################################################################
 #                               SOME UTILITIES
 ###########################################################################################
@@ -82,7 +82,6 @@ def train_ADNI(groups='CN_AD',features=1000):
     curr_df['PTGENDER'] = curr_df['PTGENDER'].astype('category').cat.codes 
     print('Label distribution of current experiment:')
     print(Counter(curr_df.DX_bl))
-    
     df, y = data_prep(curr_df)
     print("Shape of final data BEFORE FEATURE SELECTION")
     print(df.shape, y.shape)
@@ -99,7 +98,7 @@ def train_ADNI(groups='CN_AD',features=1000):
     print("Shape of final data AFTER FEATURE SELECTION")
     print(df.shape, y.shape)
     final_N = df.shape[1]
-    
+
     ########################################################################################
     #                       HYPERPARAMETER GRID SEARCH
     ########################################################################################
@@ -226,7 +225,7 @@ def train_ADNI(groups='CN_AD',features=1000):
         title="Receiver operating characteristic")
     ax.legend(loc="lower right")
     plt.show()
-    plt.savefig(os.path.join(data_path,'results','ROC_for:'+groups+'.png'))
+    plt.savefig(os.path.join('/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/results','ROC_for:'+groups+'.png'))
     print('for total of ',final_N,"Features")
     print('Mean Balanced Accuracy:',sum(acc)/len(acc))
     print('Mean AUC:',sum(aucs)/len(aucs))
@@ -239,7 +238,7 @@ def train_ADNI(groups='CN_AD',features=1000):
     imp_df['importance'] = imp
 
     imp_df_sorted = imp_df.sort_values(by=['importance'],ascending=False)
-    imp_df_sorted.to_csv(os.path.join(data_path,'results',groups+'_Classification_ranked_'+str(final_N)+'_GeneExpr_features.csv'))
+    imp_df_sorted.to_csv(os.path.join('/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/results',groups+'_Classification_ranked_'+str(final_N)+'_GeneExpr_features.csv'))
 
     print("END OF THE EXPERIMENT")
 
