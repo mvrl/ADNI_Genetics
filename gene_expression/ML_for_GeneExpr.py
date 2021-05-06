@@ -21,8 +21,9 @@ from sklearn.metrics import roc_curve, auc, f1_score, roc_auc_score, balanced_ac
 from sklearn.feature_selection import RFECV
 from easydict import EasyDict as edict
 import itertools
-overall_groups = ['CN_AD','CN_EMCI','CN_LMCI','EMCI_LMCI','EMCI_AD','LMCI_AD']
 
+overall_groups = ['CN_AD','CN_EMCI','CN_LMCI','EMCI_LMCI','EMCI_AD','LMCI_AD']
+SEED = 1
 ############################################################################################
 #                               SOME UTILITIES
 ###########################################################################################
@@ -49,16 +50,15 @@ def train_ADNI(groups='CN_AD',features=1000):
     N = features
     print("EXPERIMENT LOG FOR:",groups)
     print('\n')
-    data_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/data'
-    classes = groups.split('_')
+    root_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/'
     #
     #Gene ranking based on ttest
-    ttest = read_csv(os.path.join(data_path,'t_test_0.10_geneExpr_Unfiltered_bl.csv')).sort_values(groups).reset_index()
+    ttest = read_csv(os.path.join(root_path,'data','t_test_0.10_geneExpr_Unfiltered_bl.csv')).sort_values(groups).reset_index()
     important_probes = ttest.sort_values(groups+'_c')['Gene'][0:N] #suffix _c to use the FDR corrected p values 
     #CHANGE THE LINE ABOVE ACCORDINGLY FOR DIFFERENT CLASSES
 
     #Gene Expression Data
-    df = pd.read_csv(os.path.join(data_path,'Unfiltered_gene_expr_dx.csv'),low_memory=False)
+    df = pd.read_csv(os.path.join(root_path,'data','Unfiltered_gene_expr_dx.csv'),low_memory=False)
     Gene_expr = df[['Unnamed: 0','AGE','PTGENDER','PTEDUCAT','DX_bl']+list(important_probes)]
     df = Gene_expr
     df_CN = df[df['DX_bl']=='CN']
@@ -90,9 +90,9 @@ def train_ADNI(groups='CN_AD',features=1000):
     #                       RECURSIVE FEATURE ELIMINATION
     ########################################################################################
 
-    estimator = GradientBoostingClassifier(random_state=1,n_estimators=2*df.shape[1])
-    cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=1)
-    selector = RFECV(estimator, n_jobs=-1,step=1, cv=cv)
+    estimator = GradientBoostingClassifier(random_state=SEED,n_estimators=2*df.shape[1])
+    cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
+    selector = RFECV(estimator, n_jobs=-1,step=50, cv=cv)
     selector = selector.fit(df, y)
     df = df.loc[:, selector.support_]
     print("Shape of final data AFTER FEATURE SELECTION")
@@ -108,15 +108,14 @@ def train_ADNI(groups='CN_AD',features=1000):
     # License: BSD
 
     model = Pipeline([
-            ('sampling', SMOTE(sampling_strategy=0.7, k_neighbors=7,random_state=1)),
-            ('classifier', GradientBoostingClassifier(random_state=1))
+            ('sampling', SMOTE(sampling_strategy=0.7, k_neighbors=7,random_state=SEED)),
+            ('classifier', GradientBoostingClassifier(random_state=SEED))
         ])
     space = dict()
     X, y = df, y
-    # define model
-    model = GradientBoostingClassifier(random_state=1)
+    
     # define evaluation
-    cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=1)
+    cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
     # define search space
     space = dict()
     space['n_estimators'] = range(50,5*X.shape[1],50)
@@ -170,7 +169,7 @@ def train_ADNI(groups='CN_AD',features=1000):
 
     plt.legend(loc="best")
     plt.grid(False)
-    plt.savefig(os.path.join('/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression','results','Grid_search_Using_GeneExpr_for:'+groups+'.png'))
+    plt.savefig(os.path.join(root_path,'results','Grid_search_Using_'+str(final_N)+'features_for:'+groups+'.png'))
 
     ###########################################################################################
     #                           FINAL RUN AND SAVE RESULTS
@@ -180,7 +179,7 @@ def train_ADNI(groups='CN_AD',features=1000):
     acc = []
     imp = []
     mean_fpr = np.linspace(0, 1, 100)
-    cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=1)
+    cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
     fig, ax = plt.subplots()
     X, y = df, y
     for train, test in cv.split(X, y):
@@ -190,8 +189,8 @@ def train_ADNI(groups='CN_AD',features=1000):
         X_test = X.iloc[test]
         y_test = y[test]
         n_estimators = result.best_params_['n_estimators']
-        model = GradientBoostingClassifier(random_state=1,n_estimators=n_estimators)
-        oversample = SMOTE(sampling_strategy=0.7, k_neighbors=7,random_state=1)
+        model = GradientBoostingClassifier(random_state=SEED,n_estimators=n_estimators)
+        oversample = SMOTE(sampling_strategy=0.7, k_neighbors=7,random_state=SEED)
         X_train, y_train = oversample.fit_resample(X_train, y_train)
         probas_ = model.fit(X_train, y_train).predict_proba(X_test)
         y_pred = model.predict(X_test)
@@ -225,7 +224,7 @@ def train_ADNI(groups='CN_AD',features=1000):
         title="Receiver operating characteristic")
     ax.legend(loc="lower right")
     plt.show()
-    plt.savefig(os.path.join('/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/results','ROC_for:'+groups+'.png'))
+    plt.savefig(os.path.join(root_path,'results','ROC_for:'+groups+'.png'))
     print('for total of ',final_N,"Features")
     print('Mean Balanced Accuracy:',sum(acc)/len(acc))
     print('Mean AUC:',sum(aucs)/len(aucs))
@@ -238,7 +237,7 @@ def train_ADNI(groups='CN_AD',features=1000):
     imp_df['importance'] = imp
 
     imp_df_sorted = imp_df.sort_values(by=['importance'],ascending=False)
-    imp_df_sorted.to_csv(os.path.join('/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/results',groups+'_Classification_ranked_'+str(final_N)+'_GeneExpr_features.csv'))
+    imp_df_sorted.to_csv(os.path.join(root_path,'results',groups+'_Classification_ranked_'+str(final_N)+'_GeneExpr_features.csv'))
 
     print("END OF THE EXPERIMENT")
 
