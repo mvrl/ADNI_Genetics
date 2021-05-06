@@ -21,7 +21,7 @@ from sklearn.metrics import roc_curve, auc, f1_score, roc_auc_score, balanced_ac
 groups = 'CN_AD'
 print("EXPERIMENT LOG FOR:",groups)
 print('\n')
-
+SEED = 1
 data_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/Genomics/'
 #Number of top SNPs to take as features
 N = 500
@@ -115,9 +115,9 @@ print(df.shape, y.shape)
 #                       RECURSIVE FEATURE ELIMINATION
 ########################################################################################
 
-estimator = GradientBoostingClassifier(random_state=1,n_estimators=2*df.shape[1])
-cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=1)
-selector = RFECV(estimator, n_jobs=-1,step=1, cv=cv)
+estimator = GradientBoostingClassifier(random_state=SEED, n_estimators=2*df.shape[1])
+cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
+selector = RFECV(estimator, n_jobs=-1,step=25, cv=cv)
 selector = selector.fit(df, y)
 df = df.loc[:, selector.support_]
 print("Shape of final data AFTER FEATURE SELECTION")
@@ -134,22 +134,20 @@ cat_columns_index = range(2,final_N)
 # License: BSD
 
 model = Pipeline([
-        ('sampling', SMOTENC(sampling_strategy=0.7, k_neighbors=7, categorical_features = cat_columns_index,random_state=1)),
-        ('classifier', GradientBoostingClassifier(random_state=1))
+        ('sampling', SMOTENC(sampling_strategy=0.7, k_neighbors=7, categorical_features = cat_columns_index,random_state=SEED)),
+        ('classifier', GradientBoostingClassifier(random_state=SEED))
     ])
 space = dict()
 X, y = df, y
-# define model
-model = GradientBoostingClassifier(random_state=1)
 # define evaluation
-cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=1)
+cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
 # define search space
 space = dict()
 space['n_estimators'] = range(50,5*X.shape[1],50)
 
-scoring = {'AUC': 'roc_auc', 'Accuracy':'accuracy'}
+scoring = {'AUC': 'roc_auc', 'balanced_accuracy':'balanced_accuracy'}
 # define search
-search = GridSearchCV(model, space,n_jobs=-1, cv=cv,scoring=scoring, refit='Accuracy', return_train_score=True)
+search = GridSearchCV(model, space,n_jobs=-1, cv=cv,scoring=scoring, refit='balanced_accuracy', return_train_score=True)
 # execute search
 result = search.fit(X, y)
 # summarize result
@@ -196,7 +194,7 @@ for scorer, color in zip(sorted(scoring), ['g', 'k']):
 
 plt.legend(loc="best")
 plt.grid(False)
-plt.savefig(os.path.join(data_path,'results','Grid_search_Using_Genomic_for:'+groups+'.png'))
+plt.savefig(os.path.join(data_path,'results','Grid_search_Using_'+str(final_N)+'features_for:'+groups+'.png'))
 
 ###########################################################################################
 #                           FINAL RUN AND SAVE RESULTS
@@ -206,7 +204,7 @@ aucs = []
 acc = []
 imp = []
 mean_fpr = np.linspace(0, 1, 100)
-cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=1)
+cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
 fig, ax = plt.subplots()
 X, y = df, y
 for train, test in cv.split(X, y):
@@ -216,8 +214,8 @@ for train, test in cv.split(X, y):
     X_test = X.iloc[test]
     y_test = y[test]
     n_estimators = result.best_params_['n_estimators']
-    model = GradientBoostingClassifier(random_state=1,n_estimators=n_estimators)
-    oversample = SMOTENC(sampling_strategy=0.7, k_neighbors=7, categorical_features = cat_columns_index,random_state=1)
+    model = GradientBoostingClassifier(random_state=SEED,n_estimators=n_estimators)
+    oversample = SMOTENC(sampling_strategy=0.7, k_neighbors=7, categorical_features = cat_columns_index,random_state=SEED)
     X_train, y_train = oversample.fit_resample(X_train, y_train)
     probas_ = model.fit(X_train, y_train).predict_proba(X_test)
     y_pred = model.predict(X_test)
@@ -264,6 +262,6 @@ imp_df['features'] = list(X.columns)
 imp_df['importance'] = imp
 
 imp_df_sorted = imp_df.sort_values(by=['importance'],ascending=False)
-imp_df_sorted.to_csv(os.path.join(data_path,'results',groups+'_Classification_ranked_'+str(final_N)+'_Genomic_features.csv'))
+imp_df_sorted.to_csv(os.path.join(data_path,'results',groups+'_Classification_ranked_'+str(final_N)+'_features.csv'))
 
 print("END OF THE EXPERIMENT")
