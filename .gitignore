@@ -3,10 +3,10 @@
 __pycache__/
 data/
 */data/*
-*/results/
-*/plots/
+*/results/*
 
 */GSEA/*.rnk
 */GSEA/*.csv
 
 */*.txt
+*/*.log

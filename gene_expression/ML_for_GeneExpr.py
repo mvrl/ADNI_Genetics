@@ -42,12 +42,12 @@ def data_prep(df):
 
 def train_ADNI(groups='CN_AD',features=1000):
 
-
     ############################################################################################
                                             # DATA PREPARATION
     ##############################################################################################
     groups = groups
     N = features
+    STEP = int(features/20)
     print("EXPERIMENT LOG FOR:",groups)
     print('\n')
     root_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/'
@@ -61,13 +61,16 @@ def train_ADNI(groups='CN_AD',features=1000):
     df = pd.read_csv(os.path.join(root_path,'data','Unfiltered_gene_expr_dx.csv'),low_memory=False)
     Gene_expr = df[['Unnamed: 0','AGE','PTGENDER','PTEDUCAT','DX_bl']+list(important_probes)]
     df = Gene_expr
+    print('Label distribution of overall data:')
+    print(Counter(df.DX_bl))
     df_CN = df[df['DX_bl']=='CN']
     df_AD = df[df['DX_bl']=='AD']
     df_EMCI = df[df['DX_bl']=='EMCI']
     df_LMCI = df[df['DX_bl']=='LMCI']
-
+    SAMPLING = 1.0
     if groups == 'CN_AD':
-        curr_df = pd.concat([df_CN, df_AD], ignore_index=True) 
+        curr_df = pd.concat([df_CN, df_AD], ignore_index=True)
+        SAMPLING = 0.7 
     if groups == 'CN_EMCI':
         curr_df = pd.concat([df_CN, df_EMCI], ignore_index=True)
     if groups == 'CN_LMCI':
@@ -92,12 +95,16 @@ def train_ADNI(groups='CN_AD',features=1000):
 
     estimator = GradientBoostingClassifier(random_state=SEED,n_estimators=2*df.shape[1])
     cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
-    selector = RFECV(estimator, n_jobs=-1,step=50, cv=cv)
+    selector = RFECV(estimator, n_jobs=-1,step=STEP, cv=cv)
     selector = selector.fit(df, y)
     df = df.loc[:, selector.support_]
     print("Shape of final data AFTER FEATURE SELECTION")
     print(df.shape, y.shape)
+    cat_columns = ['PTGENDER']
     final_N = df.shape[1]
+    cat_columns_index = []
+    if 'PTGENDER' in df.columns:
+        cat_columns_index.append(list(df.columns).index('PTGENDER'))
 
     ########################################################################################
     #                       HYPERPARAMETER GRID SEARCH
@@ -106,11 +113,17 @@ def train_ADNI(groups='CN_AD',features=1000):
 
     # Author: Raghav RV <rvraghav93@gmail.com>
     # License: BSD
+    if len(cat_columns_index) > 0:
+        model = Pipeline([
+                ('sampling', SMOTENC(sampling_strategy=SAMPLING, k_neighbors=7,random_state=SEED,categorical_features = cat_columns_index)),
+                ('classifier', GradientBoostingClassifier(random_state=SEED))
+            ])
+    else:
+        model = Pipeline([
+                ('sampling', SMOTE(sampling_strategy=SAMPLING, k_neighbors=7,random_state=SEED)),
+                ('classifier', GradientBoostingClassifier(random_state=SEED))
+            ])
 
-    model = Pipeline([
-            ('sampling', SMOTE(sampling_strategy=0.7, k_neighbors=7,random_state=SEED)),
-            ('classifier', GradientBoostingClassifier(random_state=SEED))
-        ])
     space = dict()
     X, y = df, y
     
@@ -118,7 +131,7 @@ def train_ADNI(groups='CN_AD',features=1000):
     cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
     # define search space
     space = dict()
-    space['n_estimators'] = range(50,5*X.shape[1],50)
+    space['classifier__n_estimators'] = range(50,7*X.shape[1],50)
 
     scoring = {'AUC': 'roc_auc', 'balanced_accuracy':'balanced_accuracy'}
     # define search
@@ -139,11 +152,11 @@ def train_ADNI(groups='CN_AD',features=1000):
     plt.ylabel("Score")
 
     ax = plt.gca()
-    ax.set_xlim(min(space['n_estimators']), max(space['n_estimators'])+2)
+    ax.set_xlim(min(space['classifier__n_estimators']), max(space['classifier__n_estimators'])+2)
     ax.set_ylim(0.50, 1)
 
     # Get the regular numpy array from the MaskedArray
-    X_axis = np.array(results['param_n_estimators'].data, dtype=float)
+    X_axis = np.array(results['param_classifier__n_estimators'].data, dtype=float)
 
     for scorer, color in zip(sorted(scoring), ['g', 'k']):
         for sample, style in (('train', '--'), ('test', '-')):
@@ -169,7 +182,7 @@ def train_ADNI(groups='CN_AD',features=1000):
 
     plt.legend(loc="best")
     plt.grid(False)
-    plt.savefig(os.path.join(root_path,'results','Grid_search_Using_'+str(final_N)+'features_for:'+groups+'.png'))
+    plt.savefig(os.path.join(root_path,'results','Grid_search_Using_'+str(STEP)+'_'+str(features)+'features_for:'+groups+'.png'))
 
     ###########################################################################################
     #                           FINAL RUN AND SAVE RESULTS
@@ -188,9 +201,12 @@ def train_ADNI(groups='CN_AD',features=1000):
         
         X_test = X.iloc[test]
         y_test = y[test]
-        n_estimators = result.best_params_['n_estimators']
+        n_estimators = result.best_params_['classifier__n_estimators']
         model = GradientBoostingClassifier(random_state=SEED,n_estimators=n_estimators)
-        oversample = SMOTE(sampling_strategy=0.7, k_neighbors=7,random_state=SEED)
+        if len(cat_columns_index) > 0:
+            oversample = SMOTENC(sampling_strategy=SAMPLING, k_neighbors=7,random_state=SEED,categorical_features = cat_columns_index)
+        else:
+            oversample = SMOTE(sampling_strategy=SAMPLING, k_neighbors=7,random_state=SEED)
         X_train, y_train = oversample.fit_resample(X_train, y_train)
         probas_ = model.fit(X_train, y_train).predict_proba(X_test)
         y_pred = model.predict(X_test)
@@ -224,7 +240,7 @@ def train_ADNI(groups='CN_AD',features=1000):
         title="Receiver operating characteristic")
     ax.legend(loc="lower right")
     plt.show()
-    plt.savefig(os.path.join(root_path,'results','ROC_for:'+groups+'.png'))
+    plt.savefig(os.path.join(root_path,'results','ROC_for:'+groups+'_'+str(STEP)+'_'+str(features)+'.png'))
     print('for total of ',final_N,"Features")
     print('Mean Balanced Accuracy:',sum(acc)/len(acc))
     print('Mean AUC:',sum(aucs)/len(aucs))
@@ -237,10 +253,11 @@ def train_ADNI(groups='CN_AD',features=1000):
     imp_df['importance'] = imp
 
     imp_df_sorted = imp_df.sort_values(by=['importance'],ascending=False)
-    imp_df_sorted.to_csv(os.path.join(root_path,'results',groups+'_Classification_ranked_'+str(final_N)+'_GeneExpr_features.csv'))
+    imp_df_sorted.to_csv(os.path.join(root_path,'results',groups+'_Classification_ranked_'+str(STEP)+'_'+str(features)+'_GeneExpr_features.csv'))
 
     print("END OF THE EXPERIMENT")
 
+    plt.close('all')
     return sum(acc)/len(acc), sum(aucs)/len(aucs)
 
 
@@ -254,21 +271,21 @@ if  __name__ == '__main__':
     args = parser.parse_args()
     
     if args.tuning == 'no_sweep':
-        acc, auc = train_ADNI(features=args.features,
+        acc, my_auc = train_ADNI(features=args.features,
                 groups = args.groups       
                )
     
-    cfg = edict()
     HyperParameters = edict()
     HyperParameters.groups =['CN_AD','CN_EMCI','CN_LMCI', 'EMCI_LMCI','EMCI_AD','LMCI_AD'] 
-    HyperParameters.features= [1000]
+    HyperParameters.features= [100,200,300,400,500,750]
     HyperParameters.params = [HyperParameters.features,HyperParameters.groups]  
     if args.tuning == 'sweep':
         params = list(itertools.product(*HyperParameters.params))
         for hp in params:
             print("For parameters:",hp)
-            acc, auc = train_ADNI(
+            acc, my_auc = train_ADNI(
                 features = hp[0],
                 groups = hp[1]     
                )
-            print(acc, auc)
+            print(acc, my_auc)
+            print('\n')
