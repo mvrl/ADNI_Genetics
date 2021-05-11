@@ -1,8 +1,0 @@
-For parameters: (1000, 'CN_AD')
-EXPERIMENT LOG FOR: CN_AD
-
-
-Label distribution of current experiment:
-Counter({'CN': 260, 'AD': 43})
-Shape of final data BEFORE FEATURE SELECTION
-(303, 1003) (303,)
