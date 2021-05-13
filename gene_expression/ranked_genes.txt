@@ -1,3 +1,4 @@
+#Ranked genes from the previous paper by other team
 SUMF1 11720732_a_at
 MYEOV 11755024_a_at
 SMOX 11741507_a_at

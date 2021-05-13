@@ -22,6 +22,8 @@ import itertools
 ################################################################################################
 #                                           UTILITIES
 ################################################################################################
+SEED = 1
+np.random.seed(SEED)
 def sequence_parser(t):
         
         t1 = [t[i].strip() for i in range(len(t)) if i%2 !=0]
@@ -63,7 +65,6 @@ def train_ADNI(groups='CN_AD',features=1000):
     groups = groups
     print("EXPERIMENT LOG FOR:",groups)
     print('\n')
-    SEED = 1
     data_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/Genomics/'
     #Number of top SNPs to take as features
     N = features

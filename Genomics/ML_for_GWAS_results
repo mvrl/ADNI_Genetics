@@ -1,0 +1,173 @@
+For parameters: (100, 'CN_AD')
+EXPERIMENT LOG FOR: CN_AD
+
+
+Overall label distribution on ADNIMERGE.csv
+Counter({'LMCI': 651, 'CN': 518, 'AD': 398, 'EMCI': 389, 'SMC': 301, nan: 12})
+Label distribution on GWAS generated file
+Counter({'CN': 325, 'AD': 195})
+Label distribution on GWAS generated file after dropping Missing individuals
+Counter({'CN': 315, 'AD': 184})
+Shape of final data BEFORE FEATURE SELECTION
+(499, 304) (499,)
+Shape of final data AFTER FEATURE SELECTION
+(499, 199) (499,)
+Best Score: 0.7695552695552695
+Best Hyperparameters: {'classifier__n_estimators': 350}
+None
+for total of  199 Features
+Mean Balanced Accuracy: 0.7695552695552694
+Mean AUC: 0.8665459109903555
+END OF THE EXPERIMENT
+
+0.7695552695552694 0.8665459109903555
+
+
+For parameters: (200, 'CN_AD')
+EXPERIMENT LOG FOR: CN_AD
+
+
+Overall label distribution on ADNIMERGE.csv
+Counter({'LMCI': 651, 'CN': 518, 'AD': 398, 'EMCI': 389, 'SMC': 301, nan: 12})
+Label distribution on GWAS generated file
+Counter({'CN': 325, 'AD': 195})
+Label distribution on GWAS generated file after dropping Missing individuals
+Counter({'CN': 295, 'AD': 165})
+Shape of final data BEFORE FEATURE SELECTION
+(460, 603) (460,)
+Shape of final data AFTER FEATURE SELECTION
+(460, 363) (460,)
+Best Score: 0.8268447183701421
+Best Hyperparameters: {'classifier__n_estimators': 2400}
+None
+for total of  363 Features
+Mean Balanced Accuracy: 0.8268447183701421
+Mean AUC: 0.9089710665981852
+END OF THE EXPERIMENT
+
+0.8268447183701421 0.9089710665981852
+
+
+For parameters: (300, 'CN_AD')
+EXPERIMENT LOG FOR: CN_AD
+
+
+Overall label distribution on ADNIMERGE.csv
+Counter({'LMCI': 651, 'CN': 518, 'AD': 398, 'EMCI': 389, 'SMC': 301, nan: 12})
+Label distribution on GWAS generated file
+Counter({'CN': 325, 'AD': 195})
+Label distribution on GWAS generated file after dropping Missing individuals
+Counter({'CN': 281, 'AD': 153})
+Shape of final data BEFORE FEATURE SELECTION
+(434, 901) (434,)
+Shape of final data AFTER FEATURE SELECTION
+(434, 766) (434,)
+Best Score: 0.7773496240601502
+Best Hyperparameters: {'classifier__n_estimators': 2600}
+None
+for total of  766 Features
+Mean Balanced Accuracy: 0.7773496240601502
+Mean AUC: 0.883528534598144
+END OF THE EXPERIMENT
+
+0.7773496240601502 0.883528534598144
+
+
+For parameters: (400, 'CN_AD')
+EXPERIMENT LOG FOR: CN_AD
+
+
+Overall label distribution on ADNIMERGE.csv
+Counter({'LMCI': 651, 'CN': 518, 'AD': 398, 'EMCI': 389, 'SMC': 301, nan: 12})
+Label distribution on GWAS generated file
+Counter({'CN': 325, 'AD': 195})
+Label distribution on GWAS generated file after dropping Missing individuals
+Counter({'CN': 267, 'AD': 149})
+Shape of final data BEFORE FEATURE SELECTION
+(416, 1200) (416,)
+Shape of final data AFTER FEATURE SELECTION
+(416, 840) (416,)
+Best Score: 0.8455111368145418
+Best Hyperparameters: {'classifier__n_estimators': 4050}
+None
+for total of  840 Features
+Mean Balanced Accuracy: 0.8455111368145419
+Mean AUC: 0.9182803601693212
+END OF THE EXPERIMENT
+
+0.8455111368145419 0.9182803601693212
+
+
+For parameters: (500, 'CN_AD')
+EXPERIMENT LOG FOR: CN_AD
+
+
+Overall label distribution on ADNIMERGE.csv
+Counter({'LMCI': 651, 'CN': 518, 'AD': 398, 'EMCI': 389, 'SMC': 301, nan: 12})
+Label distribution on GWAS generated file
+Counter({'CN': 325, 'AD': 195})
+Label distribution on GWAS generated file after dropping Missing individuals
+Counter({'CN': 257, 'AD': 146})
+Shape of final data BEFORE FEATURE SELECTION
+(403, 1499) (403,)
+Shape of final data AFTER FEATURE SELECTION
+(403, 1499) (403,)
+Best Score: 0.7904885490889548
+Best Hyperparameters: {'classifier__n_estimators': 2150}
+None
+for total of  1499 Features
+Mean Balanced Accuracy: 0.7904885490889548
+Mean AUC: 0.8987507151401675
+END OF THE EXPERIMENT
+
+0.7904885490889548 0.8987507151401675
+
+
+For parameters: (750, 'CN_AD')
+EXPERIMENT LOG FOR: CN_AD
+
+
+Overall label distribution on ADNIMERGE.csv
+Counter({'LMCI': 651, 'CN': 518, 'AD': 398, 'EMCI': 389, 'SMC': 301, nan: 12})
+Label distribution on GWAS generated file
+Counter({'CN': 325, 'AD': 195})
+Label distribution on GWAS generated file after dropping Missing individuals
+Counter({'CN': 232, 'AD': 133})
+Shape of final data BEFORE FEATURE SELECTION
+(365, 2246) (365,)
+Shape of final data AFTER FEATURE SELECTION
+(365, 678) (365,)
+Best Score: 0.8583828592462573
+Best Hyperparameters: {'classifier__n_estimators': 1900}
+None
+for total of  678 Features
+Mean Balanced Accuracy: 0.8583828592462573
+Mean AUC: 0.9512116827565487
+END OF THE EXPERIMENT
+
+0.8583828592462573 0.9512116827565487
+
+
+For parameters: (1000, 'CN_AD')
+EXPERIMENT LOG FOR: CN_AD
+
+
+Overall label distribution on ADNIMERGE.csv
+Counter({'LMCI': 651, 'CN': 518, 'AD': 398, 'EMCI': 389, 'SMC': 301, nan: 12})
+Label distribution on GWAS generated file
+Counter({'CN': 325, 'AD': 195})
+Label distribution on GWAS generated file after dropping Missing individuals
+Counter({'CN': 198, 'AD': 124})
+Shape of final data BEFORE FEATURE SELECTION
+(322, 2993) (322,)
+Shape of final data AFTER FEATURE SELECTION
+(322, 1056) (322,)
+Best Score: 0.8326196581196581
+Best Hyperparameters: {'classifier__n_estimators': 2250}
+None
+for total of  1056 Features
+Mean Balanced Accuracy: 0.8326196581196581
+Mean AUC: 0.9172148504273504
+END OF THE EXPERIMENT
+
+
