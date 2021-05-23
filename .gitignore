@@ -2,7 +2,6 @@
 .ipynb_checkpoints/
 __pycache__/
 data/
-GWAS_Gene_Expr/
 */data/*
 */results/*
 
