@@ -11,3 +11,4 @@ GWAS_Gene_Expr/
 
 */*.txt
 */*.log
+*/*.ipynb

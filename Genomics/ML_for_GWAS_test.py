@@ -47,7 +47,6 @@ def prepare_targets(y,groups):
     else:
         count_dict[class1] = int(1)
         count_dict[class2] = int(0)
-
     op = [count_dict[i] for i in y]
     return np.asarray(op)
 
@@ -73,7 +72,7 @@ def data_prep(df,groups): #This takes the dataframe and returns the one hot enco
     return df_out, target.ravel()
 
 ##########################################################################################################
-def train_ADNI(groups='CN_AD',features=1000):
+def train_ADNI(groups='CN_AD',features=750):
     
     groups = groups
     print("EXPERIMENT LOG FOR:",groups)
@@ -120,9 +119,9 @@ def train_ADNI(groups='CN_AD',features=1000):
     column_names = ['PTID','AGE','GENDER','EDU']+['DIAG']+snps
 
     df_final = pd.DataFrame(data,columns=column_names)
-    df_final.to_csv(os.path.join(data_path,'data','GWAS12_data_Dx_bl.csv'))
+    df_final.to_csv(os.path.join(data_path,'GWAS12_data_Dx_bl.csv'))
 
-    df_final = pd.read_csv(os.path.join(data_path,'data','GWAS12_data_Dx_bl.csv'),na_values=["00"])
+    df_final = pd.read_csv(os.path.join(data_path,'GWAS12_data_Dx_bl.csv'),na_values=["00"])
     df_final = df_final.iloc[:, 0:N+6] #Only top N snps
     df_final = df_final.drop(columns=['Unnamed: 0'])
     df_final.dropna(inplace=True)
@@ -136,87 +135,20 @@ def train_ADNI(groups='CN_AD',features=1000):
     #                       RECURSIVE FEATURE ELIMINATION
     ########################################################################################
 
-    estimator = GradientBoostingClassifier(random_state=SEED, n_estimators=2*df.shape[1])
-    cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
-    selector = RFECV(estimator, n_jobs=-1,step=STEP, cv=cv)
-    selector = selector.fit(df, y)
-    df = df.loc[:, selector.support_]
+    # estimator = GradientBoostingClassifier(random_state=SEED, n_estimators=2*df.shape[1])
+    # cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
+    # selector = RFECV(estimator, n_jobs=-1,step=STEP, cv=cv)
+    # selector = selector.fit(df, y)
+    # df = df.loc[:, selector.support_]
+    rank_df = pd.read_csv(os.path.join(data_path,'CN_AD_Classification_ranked_112_750_features.csv'))
+    selectors = list(rank_df['features'])
+    df = df.loc[:, selectors]
     print("Shape of final data AFTER FEATURE SELECTION")
     print(df.shape, y.shape)
     final_N = df.shape[1]
     cat_columns = list(set(df.columns) - set(['AGE','EDU']))
     cat_columns_index = range(2,final_N)
-    ########################################################################################
-    #                       HYPERPARAMETER GRID SEARCH
-    ########################################################################################
-    #Adapted from #https://scikit-learn.org/stable/auto_examples/model_selection/plot_multi_metric_evaluation.html#sphx-glr-auto-examples-model-selection-plot-multi-metric-evaluation-py
-
-    # Author: Raghav RV <rvraghav93@gmail.com>
-    # License: BSD
-
-    model = Pipeline([
-            ('sampling', SMOTENC(sampling_strategy=0.7, k_neighbors=7, categorical_features = cat_columns_index,random_state=SEED)),
-            ('classifier', GradientBoostingClassifier(random_state=SEED))
-        ])
-    space = dict()
-    X, y = df, y
-    # define evaluation
-    cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
-    # define search space
-    space = dict()
-    space['classifier__n_estimators'] = range(50,7*X.shape[1],50)
-
-    scoring = {'AUC': 'roc_auc', 'balanced_accuracy':'balanced_accuracy'}
-    # define search
-    search = GridSearchCV(model, space,n_jobs=-1, cv=cv,scoring=scoring, refit='balanced_accuracy', return_train_score=True)
-    # execute search
-    result = search.fit(X, y)
-    # summarize result
-    print('Best Score: %s' % result.best_score_)
-    print('Best Hyperparameters: %s' % result.best_params_)
-    results = search.cv_results_
-
-    print(__doc__)
-    plt.figure(figsize=(13, 13))
-    plt.title("GridSearchCV evaluating using multiple scorers simultaneously",
-            fontsize=16)
-
-    plt.xlabel("param_n_estimators")
-    plt.ylabel("Score")
-
-    ax = plt.gca()
-    ax.set_xlim(min(space['classifier__n_estimators']), max(space['classifier__n_estimators'])+2)
-    ax.set_ylim(0.50, 1)
-
-    # Get the regular numpy array from the MaskedArray
-    X_axis = np.array(results['param_classifier__n_estimators'].data, dtype=float)
-
-    for scorer, color in zip(sorted(scoring), ['g', 'k']):
-        for sample, style in (('train', '--'), ('test', '-')):
-            sample_score_mean = results['mean_%s_%s' % (sample, scorer)]
-            sample_score_std = results['std_%s_%s' % (sample, scorer)]
-            ax.fill_between(X_axis, sample_score_mean - sample_score_std,
-                            sample_score_mean + sample_score_std,
-                            alpha=0.1 if sample == 'test' else 0, color=color)
-            ax.plot(X_axis, sample_score_mean, style, color=color,
-                    alpha=1 if sample == 'test' else 0.7,
-                    label="%s (%s)" % (scorer, sample))
-
-        best_index = np.nonzero(results['rank_test_%s' % scorer] == 1)[0][0]
-        best_score = results['mean_test_%s' % scorer][best_index]
-
-        # Plot a dotted vertical line at the best score for that scorer marked by x
-        ax.plot([X_axis[best_index], ] * 2, [0, best_score],
-                linestyle='-.', color=color, marker='x', markeredgewidth=3, ms=8)
-
-        # Annotate the best score for that scorer
-        ax.annotate("%0.2f" % best_score,
-                    (X_axis[best_index], best_score + 0.005))
-
-    plt.legend(loc="best")
-    plt.grid(False)
-    plt.savefig(os.path.join(data_path,'results','Grid_search_Using_'+str(STEP)+'_'+str(features)+'features_for:'+groups+'.png'))
-
+    
     ###########################################################################################
     #                           FINAL RUN AND SAVE RESULTS
     ###########################################################################################
@@ -234,7 +166,7 @@ def train_ADNI(groups='CN_AD',features=1000):
         
         X_test = X.iloc[test]
         y_test = y[test]
-        n_estimators = result.best_params_['classifier__n_estimators']
+        n_estimators = 1900
         model = GradientBoostingClassifier(random_state=SEED,n_estimators=n_estimators)
         oversample = SMOTENC(sampling_strategy=0.7, k_neighbors=7, categorical_features = cat_columns_index,random_state=SEED)
         X_train, y_train = oversample.fit_resample(X_train, y_train)
@@ -270,7 +202,7 @@ def train_ADNI(groups='CN_AD',features=1000):
         title="Receiver operating characteristic")
     ax.legend(loc="lower right")
     plt.show()
-    plt.savefig(os.path.join(data_path,'results','ROC_for:'+groups+'_'+str(STEP)+'_'+str(features)+'.png'))
+    plt.savefig(os.path.join(data_path,'ROC_for:'+groups+'_'+str(STEP)+'_'+str(features)+'.png'))
     print('for total of ',final_N,"Features")
     print('Mean Balanced Accuracy:',sum(acc)/len(acc))
     print('Mean AUC:',sum(aucs)/len(aucs))
@@ -283,39 +215,13 @@ def train_ADNI(groups='CN_AD',features=1000):
     imp_df['importance'] = imp
 
     imp_df_sorted = imp_df.sort_values(by=['importance'],ascending=False)
-    imp_df_sorted.to_csv(os.path.join(data_path,'results',groups+'_Classification_ranked_'+str(STEP)+'_'+str(features)+'_features.csv'))
+    imp_df_sorted.to_csv(os.path.join(data_path,groups+'_Classification_ranked_'+str(STEP)+'_'+str(features)+'_features.csv'))
 
     print("END OF THE EXPERIMENT\n")
 
     plt.close('all')
     return sum(acc)/len(acc), sum(aucs)/len(aucs)
 
-
-if  __name__ == '__main__':
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--features', type=int, help='Number of features to be used', default=100)
-    parser.add_argument('--groups', type=str, help='binary classes to be classified ', default='CN_AD')
-    parser.add_argument('--tuning', type=str, help='To perform hyperparameter sweep or not. Options:[sweep, no_sweep]', default='no_sweep')    
-    args = parser.parse_args()
-    
-    if args.tuning == 'no_sweep':
-        acc, my_auc = train_ADNI(features=args.features,
-                groups = args.groups       
+acc, my_auc = train_ADNI(features=750,
+                groups = 'CN_AD'       
                )
-    
-    HyperParameters = edict()
-    HyperParameters.groups =['CN_AD'] 
-    HyperParameters.features= [100,200,300,400,500]
-    HyperParameters.params = [HyperParameters.features,HyperParameters.groups]  
-    if args.tuning == 'sweep':
-        params = list(itertools.product(*HyperParameters.params))
-        for hp in params:
-            print("For parameters:",hp)
-            acc, my_auc = train_ADNI(
-                features = hp[0],
-                groups = hp[1]     
-               )
-            print(acc, my_auc)
-            print('\n')

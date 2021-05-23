@@ -21,20 +21,33 @@ from sklearn.metrics import roc_curve, auc, f1_score, roc_auc_score, balanced_ac
 from sklearn.feature_selection import RFECV
 from easydict import EasyDict as edict
 import itertools
+import warnings
+warnings.filterwarnings("ignore")
 
 overall_groups = ['CN_AD','CN_EMCI','CN_LMCI','EMCI_LMCI','EMCI_AD','LMCI_AD']
 SEED = 1
 ############################################################################################
 #                               SOME UTILITIES
 ###########################################################################################
-def prepare_targets(y):
-    le = LabelBinarizer()
-    le.fit(y)
-    y = le.transform(y)
-    return y
+def prepare_targets(y,groups):
+    class1 = groups.split('_')[0]
+    class2 = groups.split('_')[1]
+    count_dict = Counter(y)
+    class1_count = count_dict[class1]
+    class2_count = count_dict[class2]
+    ## Label minority class = 1 and majority class = 0
+    if  class1_count > class2_count:
+        count_dict[class1] = int(0)
+        count_dict[class2] = int(1)
+    else:
+        count_dict[class1] = int(1)
+        count_dict[class2] = int(0)
 
-def data_prep(df): 
-    target = prepare_targets(list(df.DX_bl))
+    op = [count_dict[i] for i in y]
+    return np.asarray(op)
+
+def data_prep(df,groups): 
+    target = prepare_targets(list(df.DX_bl),groups)
     df1 = df.drop(columns=['Unnamed: 0','DX_bl']).reset_index(drop=True) #Patient ID and DIAG not needed  
     return df1, target.ravel()
 
@@ -85,7 +98,7 @@ def train_ADNI(groups='CN_AD',features=1000):
     curr_df['PTGENDER'] = curr_df['PTGENDER'].astype('category').cat.codes 
     print('Label distribution of current experiment:')
     print(Counter(curr_df.DX_bl))
-    df, y = data_prep(curr_df)
+    df, y = data_prep(curr_df,groups)
     print("Shape of final data BEFORE FEATURE SELECTION")
     print(df.shape, y.shape)
 
@@ -277,7 +290,7 @@ if  __name__ == '__main__':
     
     HyperParameters = edict()
     HyperParameters.groups =['CN_AD','CN_EMCI','CN_LMCI', 'EMCI_LMCI','EMCI_AD','LMCI_AD'] 
-    HyperParameters.features= [100,200,300,400,500,750]
+    HyperParameters.features= [100,200,300,400,500]
     HyperParameters.params = [HyperParameters.features,HyperParameters.groups]  
     if args.tuning == 'sweep':
         params = list(itertools.product(*HyperParameters.params))
