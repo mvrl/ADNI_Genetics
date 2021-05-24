@@ -120,9 +120,9 @@ def train_ADNI(groups='CN_AD',features=1000):
     column_names = ['PTID','AGE','GENDER','EDU']+['DIAG']+snps
 
     df_final = pd.DataFrame(data,columns=column_names)
-    df_final.to_csv(os.path.join(data_path,'data','GWAS12_data_Dx_bl.csv'))
+    df_final.to_csv(os.path.join(data_path,'data',str(features)+'_GWAS12_data_Dx_bl.csv'))
 
-    df_final = pd.read_csv(os.path.join(data_path,'data','GWAS12_data_Dx_bl.csv'),na_values=["00"])
+    df_final = pd.read_csv(os.path.join(data_path,'data',str(features)+'_GWAS12_data_Dx_bl.csv'),na_values=["00"])
     df_final = df_final.iloc[:, 0:N+6] #Only top N snps
     df_final = df_final.drop(columns=['Unnamed: 0'])
     df_final.dropna(inplace=True)
@@ -145,7 +145,7 @@ def train_ADNI(groups='CN_AD',features=1000):
     print(df.shape, y.shape)
     final_N = df.shape[1]
     cat_columns = list(set(df.columns) - set(['AGE','EDU']))
-    cat_columns_index = range(2,final_N)
+    cat_columns_index = [i for i in range(len(df.columns)) if df.columns[i] in cat_columns]
     ########################################################################################
     #                       HYPERPARAMETER GRID SEARCH
     ########################################################################################
@@ -307,7 +307,9 @@ if  __name__ == '__main__':
     
     HyperParameters = edict()
     HyperParameters.groups =['CN_AD'] 
-    HyperParameters.features= [100,200,300,400,500]
+    #HyperParameters.features= [100,200,300,400,500]
+    #HyperParameters.features= [750,1000]
+    HyperParameters.features= [1250]
     HyperParameters.params = [HyperParameters.features,HyperParameters.groups]  
     if args.tuning == 'sweep':
         params = list(itertools.product(*HyperParameters.params))

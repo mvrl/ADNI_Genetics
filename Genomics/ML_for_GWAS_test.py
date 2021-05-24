@@ -26,13 +26,6 @@ warnings.filterwarnings("ignore")
 ################################################################################################
 SEED = 1
 np.random.seed(SEED)
-def sequence_parser(t):
-        
-        t1 = [t[i].strip() for i in range(len(t)) if i%2 !=0]
-        t2 = [t[i].strip() for i in range(len(t)) if i%2 ==0]
-        Geno = [t1[i]+t2[i] for i in range(len(t1))]
-        
-        return Geno
 
 def prepare_targets(y,groups):
     class1 = groups.split('_')[0]
@@ -72,7 +65,7 @@ def data_prep(df,groups): #This takes the dataframe and returns the one hot enco
     return df_out, target.ravel()
 
 ##########################################################################################################
-def train_ADNI(groups='CN_AD',features=750):
+def train_ADNI(groups='CN_AD',features=1000):
     
     groups = groups
     print("EXPERIMENT LOG FOR:",groups)
@@ -80,47 +73,7 @@ def train_ADNI(groups='CN_AD',features=750):
     data_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/Genomics/'
     #Number of top SNPs to take as features
     N = features
-    ########################################################################################
-    #                       DATA PREPERATION
-    ########################################################################################
-    df = pd.read_csv(os.path.join(data_path,'data','ADNIMERGE.csv'),low_memory=False)
-    df_bl = df[df['VISCODE']=='bl']
-    print('Overall label distribution on ADNIMERGE.csv')
-    print(Counter(df[df['VISCODE']=='bl']['DX_bl']))
-
-    with open(os.path.join(data_path,'data','GWAS_CN_AD12.fam'),'r') as infile:
-        text = infile.read().strip().split('\n')
-
-    PTID = [line.strip().split(' ')[1] for line in text]
-        
-    df_GWAS = df_bl[pd.DataFrame(df_bl.PTID.tolist()).isin(PTID).any(1).values]
-
-    print('Label distribution on GWAS generated file')
-    print(Counter(df_GWAS['DX_bl']))
-
-    data = []
-    with open(os.path.join(data_path,'data','GWAS_CN_AD12.ped'),'r') as infile:   
-        text = infile.read().strip().split('\n')
-        for line in text:
-            gene = line.split(' ')[6:]
-            PTID = line.split(' ')[1]
-            AGE = df_GWAS[df_GWAS['PTID'] == PTID].AGE.item()
-            GENDER = df_GWAS[df_GWAS['PTID'] == PTID].PTGENDER.item()
-            EDU = df_GWAS[df_GWAS['PTID'] == PTID].PTEDUCAT.item()
-            DIAG = df_GWAS[df_GWAS['PTID'] == PTID].DX_bl.item()
-            GENOME = sequence_parser(gene)
-            output = [PTID] + [AGE] + [GENDER] + [EDU] + [DIAG]+ GENOME
-            data.append(output)
-
-
-    with open(os.path.join(data_path,'data','top2000_snps.txt'),'r') as infile:
-        snps = infile.read().strip().split('\n')
-
-    column_names = ['PTID','AGE','GENDER','EDU']+['DIAG']+snps
-
-    df_final = pd.DataFrame(data,columns=column_names)
-    df_final.to_csv(os.path.join(data_path,'GWAS12_data_Dx_bl.csv'))
-
+    
     df_final = pd.read_csv(os.path.join(data_path,'GWAS12_data_Dx_bl.csv'),na_values=["00"])
     df_final = df_final.iloc[:, 0:N+6] #Only top N snps
     df_final = df_final.drop(columns=['Unnamed: 0'])
@@ -130,25 +83,15 @@ def train_ADNI(groups='CN_AD',features=750):
     df, y = data_prep(df_final,groups)
     print("Shape of final data BEFORE FEATURE SELECTION")
     print(df.shape, y.shape)
-    STEP = int(df.shape[1]/20)
-    ########################################################################################
-    #                       RECURSIVE FEATURE ELIMINATION
-    ########################################################################################
-
-    # estimator = GradientBoostingClassifier(random_state=SEED, n_estimators=2*df.shape[1])
-    # cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
-    # selector = RFECV(estimator, n_jobs=-1,step=STEP, cv=cv)
-    # selector = selector.fit(df, y)
-    # df = df.loc[:, selector.support_]
-    rank_df = pd.read_csv(os.path.join(data_path,'CN_AD_Classification_ranked_112_750_features.csv'))
+    
+    rank_df = pd.read_csv(os.path.join(data_path,'CN_AD_Classification_ranked_149_1000_features.csv'))
     selectors = list(rank_df['features'])
     df = df.loc[:, selectors]
     print("Shape of final data AFTER FEATURE SELECTION")
     print(df.shape, y.shape)
     final_N = df.shape[1]
     cat_columns = list(set(df.columns) - set(['AGE','EDU']))
-    cat_columns_index = range(2,final_N)
-    
+    cat_columns_index = [i for i in range(len(df.columns)) if df.columns[i] in cat_columns]
     ###########################################################################################
     #                           FINAL RUN AND SAVE RESULTS
     ###########################################################################################
@@ -166,7 +109,7 @@ def train_ADNI(groups='CN_AD',features=750):
         
         X_test = X.iloc[test]
         y_test = y[test]
-        n_estimators = 1900
+        n_estimators = 1000
         model = GradientBoostingClassifier(random_state=SEED,n_estimators=n_estimators)
         oversample = SMOTENC(sampling_strategy=0.7, k_neighbors=7, categorical_features = cat_columns_index,random_state=SEED)
         X_train, y_train = oversample.fit_resample(X_train, y_train)
@@ -202,7 +145,7 @@ def train_ADNI(groups='CN_AD',features=750):
         title="Receiver operating characteristic")
     ax.legend(loc="lower right")
     plt.show()
-    plt.savefig(os.path.join(data_path,'ROC_for:'+groups+'_'+str(STEP)+'_'+str(features)+'.png'))
+    plt.savefig(os.path.join(data_path,'ROC_for:'+groups+'_'+str(features)+'.png'))
     print('for total of ',final_N,"Features")
     print('Mean Balanced Accuracy:',sum(acc)/len(acc))
     print('Mean AUC:',sum(aucs)/len(aucs))
@@ -215,13 +158,13 @@ def train_ADNI(groups='CN_AD',features=750):
     imp_df['importance'] = imp
 
     imp_df_sorted = imp_df.sort_values(by=['importance'],ascending=False)
-    imp_df_sorted.to_csv(os.path.join(data_path,groups+'_Classification_ranked_'+str(STEP)+'_'+str(features)+'_features.csv'))
+    imp_df_sorted.to_csv(os.path.join(data_path,groups+'_Classification_ranked_'+str(features)+'_features.csv'))
 
     print("END OF THE EXPERIMENT\n")
 
     plt.close('all')
     return sum(acc)/len(acc), sum(aucs)/len(aucs)
 
-acc, my_auc = train_ADNI(features=750,
+acc, my_auc = train_ADNI(features=1000,
                 groups = 'CN_AD'       
                )
