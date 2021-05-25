@@ -202,7 +202,7 @@ def train_ADNI(groups='CN_AD',features=1000,data_type = 'combined'):
     STEP = int(df.shape[1]/20)
     estimator = GradientBoostingClassifier(random_state=SEED, n_estimators=2*df.shape[1])
     cv = RepeatedStratifiedKFold(n_splits=3, n_repeats=3, random_state=SEED)
-    selector = RFECV(estimator, n_jobs=-1,step=STEP, cv=cv, scoring='balanced_accuracy')
+    selector = RFECV(estimator, n_jobs=-1,step=STEP,cv=cv,scoring='balanced_accuracy',min_features_to_select=5)
     selector = selector.fit(df, y)
     df = df.loc[:, selector.support_]
     print("Shape of final data AFTER FEATURE SELECTION")

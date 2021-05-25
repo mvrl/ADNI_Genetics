@@ -83,7 +83,7 @@ def data_prep2(df,groups):
 def RFE(df,y,STEP):
     estimator = GradientBoostingClassifier(random_state=SEED, n_estimators=2*df.shape[1])
     cv = RepeatedStratifiedKFold(n_splits=3, n_repeats=3, random_state=SEED)
-    selector = RFECV(estimator, n_jobs=-1,step=STEP, cv=cv,scoring='balanced_accuracy')
+    selector = RFECV(estimator, n_jobs=-1,step=STEP, cv=cv,scoring='balanced_accuracy',min_features_to_select=5)
     selector = selector.fit(df, y)
     df = df.loc[:, selector.support_]  
     return df, y
@@ -226,7 +226,8 @@ def train_ADNI(groups='CN_AD',features=1000,data_type = 'combined'):
         df2['DIAG'] = list(GeneExpr_DIAG)
 
         ## LATE FUSION
-        GWAS_GeneExpr_df = pd.merge(df1,df2,how='left',on=['PTID','DIAG','AGE','EDU'])
+        
+        GWAS_GeneExpr_df = pd.merge(df1,df2,how='left',on=['PTID','DIAG'])
         y = prepare_targets(list(GWAS_GeneExpr_df.DIAG),groups).ravel()
         df = GWAS_GeneExpr_df.drop(columns=['PTID','DIAG']).reset_index(drop=True) #Patient ID and DIAG not needed
         print("Shape of final "+ data_type+" data AFTER FEATURE SELECTION")
