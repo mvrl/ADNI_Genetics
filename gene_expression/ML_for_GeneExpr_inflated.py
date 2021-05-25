@@ -1,7 +1,7 @@
-## This is just .py file for the jupyter notebook. So it is not well organized
-
+## This is just the inflated results while incorrectly using SMOTE
 import os
 import pandas as pd
+from pandas import read_csv
 from collections import Counter
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import RepeatedStratifiedKFold
@@ -17,23 +17,17 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import make_scorer
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc, f1_score, roc_auc_score, balanced_accuracy_score
+from sklearn.feature_selection import RFECV
 from easydict import EasyDict as edict
 import itertools
 import warnings
 warnings.filterwarnings("ignore")
-################################################################################################
-#                                           UTILITIES
-################################################################################################
-SEED = 1
-np.random.seed(SEED)
-def sequence_parser(t):
-        
-        t1 = [t[i].strip() for i in range(len(t)) if i%2 !=0]
-        t2 = [t[i].strip() for i in range(len(t)) if i%2 ==0]
-        Geno = [t1[i]+t2[i] for i in range(len(t1))]
-        
-        return Geno
 
+overall_groups = ['CN_AD','CN_EMCI','CN_LMCI','EMCI_LMCI','EMCI_AD','LMCI_AD']
+SEED = 1
+############################################################################################
+#                               SOME UTILITIES
+###########################################################################################
 def prepare_targets(y,groups):
     class1 = groups.split('_')[0]
     class2 = groups.split('_')[1]
@@ -51,101 +45,87 @@ def prepare_targets(y,groups):
     op = [count_dict[i] for i in y]
     return np.asarray(op)
 
-#Very inefficient approach! but is easier to visualize in my head
-def data_prep(df,groups): #This takes the dataframe and returns the one hot encoded expansion of input features
-    target = prepare_targets(list(df.DIAG),groups)
-    df1 = df.drop(columns=['PTID','DIAG']).reset_index(drop=True) #Patient ID and DIAG not needed
-    num_cols = ['AGE','EDU']
-    cat_cols = list(set(df1.columns) - set(num_cols)) #Categorical features
-    expand_cat = ['AGE','EDU'] #List of expanded categorical columns
-    for cat in cat_cols:
-        expand_cat = expand_cat + [str(cat)+'_'+ c for c in list(set(df1[cat]))]
-    df_out = pd.DataFrame(columns=list(expand_cat))
-    df_out['AGE'] = df1.AGE
-    df_out['EDU'] = df1.EDU
-    for i in range(len(df1)):
-        row = df1.iloc[i]
-        for col in cat_cols:
-            item = row[col]
-            df_out.at[i,str(col)+'_'+ item] = str(1)
-        
-    df_out = df_out.fillna(str(0))
-    return df_out, target.ravel()
+def data_prep(df,groups): 
+    target = prepare_targets(list(df.DX_bl),groups)
+    df1 = df.drop(columns=['Unnamed: 0','DX_bl']).reset_index(drop=True) #Patient ID and DIAG not needed  
+    return df1, target.ravel()
 
-##########################################################################################################
-def train_ADNI(groups='CN_AD',features=1000):
-    
+############################################################################################
+
+def train_ADNI(groups='CN_AD',best_feats_map=''):
+
+    ############################################################################################
+                                            # DATA PREPARATION
+    ##############################################################################################
+    root_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/'
     groups = groups
+    rank_df = pd.read_csv(os.path.join(root_path,'results',best_feats_map))
+    selectors = list(rank_df['features'])
+    features = int(best_feats_map.split('_')[3])
+    N = features
     print("EXPERIMENT LOG FOR:",groups)
     print('\n')
-    data_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/Genomics/'
-    #Number of top SNPs to take as features
-    N = features
-    ########################################################################################
-    #                       DATA PREPERATION
-    ########################################################################################
-    df = pd.read_csv(os.path.join(data_path,'data','ADNIMERGE.csv'),low_memory=False)
-    df_bl = df[df['VISCODE']=='bl']
-    print('Overall label distribution on ADNIMERGE.csv')
-    print(Counter(df[df['VISCODE']=='bl']['DX_bl']))
+    #
+    #Gene ranking based on ttest
+    ttest = read_csv(os.path.join(root_path,'data','t_test_0.10_geneExpr_Unfiltered_bl.csv')).sort_values(groups).reset_index()
+    important_probes = ttest.sort_values(groups+'_c')['Gene'][0:N] #suffix _c to use the FDR corrected p values 
+    #CHANGE THE LINE ABOVE ACCORDINGLY FOR DIFFERENT CLASSES
 
-    with open(os.path.join(data_path,'data','GWAS_CN_AD12.fam'),'r') as infile:
-        text = infile.read().strip().split('\n')
+    #Gene Expression Data
+    df = pd.read_csv(os.path.join(root_path,'data','Unfiltered_gene_expr_dx.csv'),low_memory=False)
+    Gene_expr = df[['Unnamed: 0','AGE','PTGENDER','PTEDUCAT','DX_bl']+list(important_probes)]
+    df = Gene_expr
+    print('Label distribution of overall data:')
+    print(Counter(df.DX_bl))
+    df_CN = df[df['DX_bl']=='CN']
+    df_AD = df[df['DX_bl']=='AD']
+    df_EMCI = df[df['DX_bl']=='EMCI']
+    df_LMCI = df[df['DX_bl']=='LMCI']
+    SAMPLING = 1.0
+    if groups == 'CN_AD':
+        curr_df = pd.concat([df_CN, df_AD], ignore_index=True)
+        SAMPLING = 0.7 
+    if groups == 'CN_EMCI':
+        curr_df = pd.concat([df_CN, df_EMCI], ignore_index=True)
+    if groups == 'CN_LMCI':
+        curr_df = pd.concat([df_CN, df_LMCI], ignore_index=True)
+    if groups == 'EMCI_LMCI':
+        curr_df = pd.concat([df_EMCI, df_LMCI], ignore_index=True)
+    if groups == 'EMCI_AD':
+        curr_df = pd.concat([df_EMCI, df_AD], ignore_index=True)
+    if groups == 'LMCI_AD':
+        curr_df = pd.concat([df_LMCI, df_AD], ignore_index=True)
 
-    PTID = [line.strip().split(' ')[1] for line in text]
-        
-    df_GWAS = df_bl[pd.DataFrame(df_bl.PTID.tolist()).isin(PTID).any(1).values]
-
-    print('Label distribution on GWAS generated file')
-    print(Counter(df_GWAS['DX_bl']))
-
-    data = []
-    with open(os.path.join(data_path,'data','GWAS_CN_AD12.ped'),'r') as infile:   
-        text = infile.read().strip().split('\n')
-        for line in text:
-            gene = line.split(' ')[6:]
-            PTID = line.split(' ')[1]
-            AGE = df_GWAS[df_GWAS['PTID'] == PTID].AGE.item()
-            GENDER = df_GWAS[df_GWAS['PTID'] == PTID].PTGENDER.item()
-            EDU = df_GWAS[df_GWAS['PTID'] == PTID].PTEDUCAT.item()
-            DIAG = df_GWAS[df_GWAS['PTID'] == PTID].DX_bl.item()
-            GENOME = sequence_parser(gene)
-            output = [PTID] + [AGE] + [GENDER] + [EDU] + [DIAG]+ GENOME
-            data.append(output)
-
-
-    with open(os.path.join(data_path,'data','top2000_snps.txt'),'r') as infile:
-        snps = infile.read().strip().split('\n')
-
-    column_names = ['PTID','AGE','GENDER','EDU']+['DIAG']+snps
-
-    df_final = pd.DataFrame(data,columns=column_names)
-    df_final.to_csv(os.path.join(data_path,'data','final_'+str(features)+'_GWAS12_data_Dx_bl.csv'))
-
-    df_final = pd.read_csv(os.path.join(data_path,'data','final_'+str(features)+'_GWAS12_data_Dx_bl.csv'),na_values=["00"])
-    df_final = df_final.iloc[:, 0:N+6] #Only top N snps
-    df_final = df_final.drop(columns=['Unnamed: 0'])
-    df_final.dropna(inplace=True)
-    print('Label distribution on GWAS generated file after dropping Missing individuals')
-    print(Counter(df_final.DIAG))
-    df, y = data_prep(df_final,groups)
+    curr_df['PTGENDER'] = curr_df['PTGENDER'].astype('category').cat.codes 
+    print('Label distribution of current experiment:')
+    print(Counter(curr_df.DX_bl))
+    df, y = data_prep(curr_df,groups)
     print("Shape of final data BEFORE FEATURE SELECTION")
     print(df.shape, y.shape)
-    STEP = int(df.shape[1]/20)
+
     ########################################################################################
     #                       RECURSIVE FEATURE ELIMINATION
     ########################################################################################
-
-    estimator = GradientBoostingClassifier(random_state=SEED, n_estimators=2*df.shape[1])
-    cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
-    selector = RFECV(estimator, n_jobs=-1,step=STEP, cv=cv,scoring='balanced_accuracy')
-    selector = selector.fit(df, y)
-    df = df.loc[:, selector.support_]
+    df = df.loc[:, selectors]
     print("Shape of final data AFTER FEATURE SELECTION")
     print(df.shape, y.shape)
     final_N = df.shape[1]
     cat_columns = list(set(df.columns) - set(['AGE','EDU']))
     cat_columns_index = [i for i in range(len(df.columns)) if df.columns[i] in cat_columns]
+    
+    #USE SMOTE HERE>> The UNFAIR WAY
+    if len(cat_columns_index) > 0:
+        oversample = SMOTENC(sampling_strategy=SAMPLING, k_neighbors=7,random_state=SEED,categorical_features = cat_columns_index)
+    else:
+        oversample = SMOTE(sampling_strategy=SAMPLING, k_neighbors=7,random_state=SEED)
+    
+    df, y = oversample.fit_resample(df, y)
+    print("Shape of final data AFTER Over sampling")
+    print(df.shape, y.shape)
+    print(" Label distribution after Oversampling")
+    print(Counter(y))
+    if 'PTGENDER' in df.columns:
+        df['PTGENDER'] = df['PTGENDER'].astype('category').cat.codes 
     ########################################################################################
     #                       HYPERPARAMETER GRID SEARCH
     ########################################################################################
@@ -153,17 +133,14 @@ def train_ADNI(groups='CN_AD',features=1000):
 
     # Author: Raghav RV <rvraghav93@gmail.com>
     # License: BSD
-
     model = Pipeline([
-            ('sampling', SMOTENC(sampling_strategy=0.7, k_neighbors=7, categorical_features = cat_columns_index,random_state=SEED)),
-            ('classifier', GradientBoostingClassifier(random_state=SEED))
-        ])
+                ('classifier', GradientBoostingClassifier(random_state=SEED))])
     space = dict()
     X, y = df, y
+    
     # define evaluation
     cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
     # define search space
-    space = dict()
     space['classifier__n_estimators'] = range(50,7*X.shape[1],50)
 
     scoring = {'AUC': 'roc_auc', 'balanced_accuracy':'balanced_accuracy'}
@@ -215,7 +192,7 @@ def train_ADNI(groups='CN_AD',features=1000):
 
     plt.legend(loc="best")
     plt.grid(False)
-    plt.savefig(os.path.join(data_path,'results','Grid_search_Using'+'_'+str(features)+'features_for:'+groups+'.png'))
+    plt.savefig(os.path.join(root_path,'results_inflated','Grid_search_Using_'+str(features)+'features_for:'+groups+'.png'))
 
     ###########################################################################################
     #                           FINAL RUN AND SAVE RESULTS
@@ -228,6 +205,7 @@ def train_ADNI(groups='CN_AD',features=1000):
     cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
     fig, ax = plt.subplots()
     X, y = df, y
+
     for train, test in cv.split(X, y):
         X_train = X.iloc[train]
         y_train = y[train]
@@ -236,8 +214,6 @@ def train_ADNI(groups='CN_AD',features=1000):
         y_test = y[test]
         n_estimators = result.best_params_['classifier__n_estimators']
         model = GradientBoostingClassifier(random_state=SEED,n_estimators=n_estimators)
-        oversample = SMOTENC(sampling_strategy=0.7, k_neighbors=7, categorical_features = cat_columns_index,random_state=SEED)
-        X_train, y_train = oversample.fit_resample(X_train, y_train)
         probas_ = model.fit(X_train, y_train).predict_proba(X_test)
         y_pred = model.predict(X_test)
         acc.append(balanced_accuracy_score(y_test, y_pred))
@@ -270,7 +246,7 @@ def train_ADNI(groups='CN_AD',features=1000):
         title="Receiver operating characteristic")
     ax.legend(loc="lower right")
     plt.show()
-    plt.savefig(os.path.join(data_path,'results','ROC_for:'+groups+'_'+str(features)+'.png'))
+    plt.savefig(os.path.join(root_path,'results_inflated','ROC_for:'+groups+'_'+str(features)+'.png'))
     print('for total of ',final_N,"Features")
     print('Mean Balanced Accuracy:',sum(acc)/len(acc))
     print('Mean AUC:',sum(aucs)/len(aucs))
@@ -283,9 +259,9 @@ def train_ADNI(groups='CN_AD',features=1000):
     imp_df['importance'] = imp
 
     imp_df_sorted = imp_df.sort_values(by=['importance'],ascending=False)
-    imp_df_sorted.to_csv(os.path.join(data_path,'results',groups+'_Classification_ranked'+'_'+str(features)+'_features.csv'))
+    imp_df_sorted.to_csv(os.path.join(root_path,'results_inflated',groups+'_Classification_ranked'+'_'+str(features)+'_GeneExpr_features.csv'))
 
-    print("END OF THE EXPERIMENT\n")
+    print("END OF THE EXPERIMENT")
 
     plt.close('all')
     return sum(acc)/len(acc), sum(aucs)/len(aucs)
@@ -295,20 +271,21 @@ if  __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--features', type=int, help='Number of features to be used', default=100)
+    parser.add_argument('--best_feats_map', type=str, help='Ranked list of best features obtained for the group', default='path_to_feat_map')
     parser.add_argument('--groups', type=str, help='binary classes to be classified ', default='CN_AD')
     parser.add_argument('--tuning', type=str, help='To perform hyperparameter sweep or not. Options:[sweep, no_sweep]', default='no_sweep')    
     args = parser.parse_args()
     
     if args.tuning == 'no_sweep':
-        acc, my_auc = train_ADNI(features=args.features,
+        acc, my_auc = train_ADNI(best_feats_map=args.best_feats_map,
                 groups = args.groups       
                )
     
     HyperParameters = edict()
-    HyperParameters.groups =['CN_AD'] 
-    HyperParameters.features= [100,200,300,400,500,750,1000,1250,1500]
-    HyperParameters.params = [HyperParameters.features,HyperParameters.groups]  
+    HyperParameters.best_feats_map = {'CN_AD':'','CN_EMCI':'','CN_LMCI':'', 'EMCI_LMCI':'','EMCI_AD':'','LMCI_AD':''}
+    HyperParameters.groups = ['CN_AD','CN_EMCI','CN_LMCI', 'EMCI_LMCI','EMCI_AD','LMCI_AD']
+    #HyperParameters.features= [100,200,300,400,500]
+    HyperParameters.params = [HyperParameters.best_feats_map,HyperParameters.groups]  
     if args.tuning == 'sweep':
         params = list(itertools.product(*HyperParameters.params))
         for hp in params:

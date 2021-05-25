@@ -3,6 +3,7 @@
 import os
 import pandas as pd
 from collections import Counter
+from pandas.core.arrays.integer import Int8Dtype
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.feature_selection import RFECV
@@ -25,6 +26,7 @@ warnings.filterwarnings("ignore")
 #                                           UTILITIES
 ################################################################################################
 SEED = 1
+SAMPLING = 0.7 #For SMOTENC
 np.random.seed(SEED)
 def sequence_parser(t):
         
@@ -52,44 +54,56 @@ def prepare_targets(y,groups):
     return np.asarray(op)
 
 #Very inefficient approach! but is easier to visualize in my head
-def data_prep(df,groups): #This takes the dataframe and returns the one hot encoded expansion of input features
+def data_prep1(df,groups,num_cols=[]): #This takes the dataframe and returns the one hot encoded expansion of input features
     target = prepare_targets(list(df.DIAG),groups)
     df1 = df.drop(columns=['PTID','DIAG']).reset_index(drop=True) #Patient ID and DIAG not needed
-    num_cols = ['AGE','EDU']
+    num_cols = ['AGE','EDU']+num_cols
     cat_cols = list(set(df1.columns) - set(num_cols)) #Categorical features
-    expand_cat = ['AGE','EDU'] #List of expanded categorical columns
+    expand_cat = num_cols #Placeholder List for expanded columns
     for cat in cat_cols:
-        expand_cat = expand_cat + [str(cat)+'_'+ c for c in list(set(df1[cat]))]
+        expand_cat = expand_cat + [str(cat)+'_'+ str(c) for c in list(set(df1[cat]))]
     df_out = pd.DataFrame(columns=list(expand_cat))
-    df_out['AGE'] = df1.AGE
-    df_out['EDU'] = df1.EDU
+    for col in num_cols:
+        df_out[col] = df1[col]
     for i in range(len(df1)):
         row = df1.iloc[i]
         for col in cat_cols:
             item = row[col]
-            df_out.at[i,str(col)+'_'+ item] = str(1)
+            df_out.at[i,str(col)+'_'+ str(item)] = str(1)
         
     df_out = df_out.fillna(str(0))
     return df_out, target.ravel()
 
+def data_prep2(df,groups): 
+    target = prepare_targets(list(df.DIAG),groups)
+    df1 = df.drop(columns=['PTID','DIAG']).reset_index(drop=True) #Patient ID and DIAG not needed  
+    return df1, target.ravel()
 ##########################################################################################################
-def train_ADNI(groups='CN_AD',features=1000):
+def train_ADNI(groups='CN_AD',features=1000,data_type = 'combined'):
     
     groups = groups
     print("EXPERIMENT LOG FOR:",groups)
     print('\n')
-    data_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/Genomics/'
-    #Number of top SNPs to take as features
-    N = features
+    print("Using data:",data_type)
+    print('\n')
     ########################################################################################
     #                       DATA PREPERATION
     ########################################################################################
-    df = pd.read_csv(os.path.join(data_path,'data','ADNIMERGE.csv'),low_memory=False)
+
+
+    ########################################################################################
+    #                                           GWAS
+    ########################################################################################
+    GWAS_data_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/Genomics/'
+    results_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/GWAS_Gene_Expr/results_early/'
+    #Number of top SNPs to take as features
+    N = features
+    df = pd.read_csv(os.path.join(GWAS_data_path,'data','ADNIMERGE.csv'),low_memory=False)
     df_bl = df[df['VISCODE']=='bl']
     print('Overall label distribution on ADNIMERGE.csv')
     print(Counter(df[df['VISCODE']=='bl']['DX_bl']))
 
-    with open(os.path.join(data_path,'data','GWAS_CN_AD12.fam'),'r') as infile:
+    with open(os.path.join(GWAS_data_path,'data','GWAS_CN_AD12.fam'),'r') as infile:
         text = infile.read().strip().split('\n')
 
     PTID = [line.strip().split(' ')[1] for line in text]
@@ -100,7 +114,7 @@ def train_ADNI(groups='CN_AD',features=1000):
     print(Counter(df_GWAS['DX_bl']))
 
     data = []
-    with open(os.path.join(data_path,'data','GWAS_CN_AD12.ped'),'r') as infile:   
+    with open(os.path.join(GWAS_data_path,'data','GWAS_CN_AD12.ped'),'r') as infile:   
         text = infile.read().strip().split('\n')
         for line in text:
             gene = line.split(' ')[6:]
@@ -113,38 +127,90 @@ def train_ADNI(groups='CN_AD',features=1000):
             output = [PTID] + [AGE] + [GENDER] + [EDU] + [DIAG]+ GENOME
             data.append(output)
 
-
-    with open(os.path.join(data_path,'data','top2000_snps.txt'),'r') as infile:
+    with open(os.path.join(GWAS_data_path,'data','top2000_snps.txt'),'r') as infile:
         snps = infile.read().strip().split('\n')
 
     column_names = ['PTID','AGE','GENDER','EDU']+['DIAG']+snps
 
     df_final = pd.DataFrame(data,columns=column_names)
-    df_final.to_csv(os.path.join(data_path,'data','final_'+str(features)+'_GWAS12_data_Dx_bl.csv'))
+    df_final.to_csv(os.path.join(results_path,'FOR_Early_fusion_'+str(features)+'GWAS12_data_Dx_bl.csv'))
 
-    df_final = pd.read_csv(os.path.join(data_path,'data','final_'+str(features)+'_GWAS12_data_Dx_bl.csv'),na_values=["00"])
+    df_final = pd.read_csv(os.path.join(results_path,'FOR_Early_fusion_'+str(features)+'GWAS12_data_Dx_bl.csv'),na_values=["00"])
     df_final = df_final.iloc[:, 0:N+6] #Only top N snps
     df_final = df_final.drop(columns=['Unnamed: 0'])
     df_final.dropna(inplace=True)
     print('Label distribution on GWAS generated file after dropping Missing individuals')
     print(Counter(df_final.DIAG))
-    df, y = data_prep(df_final,groups)
-    print("Shape of final data BEFORE FEATURE SELECTION")
+    df_final_GWAS = df_final
+
+    ########################################################################################
+    #                                       Gene Expression
+    ########################################################################################
+
+    GeneExpr_data_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/'
+    #
+    #Gene ranking based on ttest
+    ttest = pd.read_csv(os.path.join(GeneExpr_data_path,'data','t_test_0.10_geneExpr_Unfiltered_bl.csv')).sort_values(groups).reset_index()
+    important_probes = ttest.sort_values(groups+'_c')['Gene'][0:N] #suffix _c to use the FDR corrected p values 
+    #Gene Expression Data
+    df = pd.read_csv(os.path.join(GeneExpr_data_path,'data','Unfiltered_gene_expr_dx.csv'),low_memory=False)
+    Gene_expr = df[['Unnamed: 0','AGE','PTGENDER','PTEDUCAT','DX_bl']+list(important_probes)]
+    df = Gene_expr
+    print('Label distribution of overall Gene Expression data:')
+    print(Counter(df.DX_bl))
+    df_CN = df[df['DX_bl']=='CN']
+    df_AD = df[df['DX_bl']=='AD']
+    curr_df = pd.concat([df_CN, df_AD], ignore_index=True)
+    curr_df['PTGENDER'] = curr_df['PTGENDER'].astype('category').cat.codes 
+
+    #############################COMMON data ######################################################
+    common_subjects = set(df_final_GWAS['PTID']).intersection(set(curr_df['Unnamed: 0']))
+    GWAS_data_final = df_final_GWAS[pd.DataFrame(df_final_GWAS.PTID.tolist()).isin(common_subjects).any(1).values]
+    df1, y1 = data_prep1(GWAS_data_final,groups)
+    print("Shape of common GWAS data")
+    print(df1.shape, y1.shape)
+
+    Gene_expr_final = curr_df[pd.DataFrame(curr_df['Unnamed: 0'].tolist()).isin(common_subjects).any(1).values]
+    cols = Gene_expr_final.columns
+    num_cols = list(cols[5:])
+    Gene_expr_final.columns = ['PTID','AGE','GENDER','EDU','DIAG']+list(cols[5:])
+    df2, y2 = data_prep2(Gene_expr_final,groups)
+    df2['EDU']=df2['EDU'].astype('float64')
+
+    print("Shape of common GeneExpr data")
+    print(df2.shape, y2.shape)
+
+    GWAS_data_final['GENDER']=GWAS_data_final['GENDER'].astype('category').cat.codes
+    Gene_expr_final['EDU']=Gene_expr_final['EDU'].astype('float64')
+
+    ###EARLY FUSION OF INPUT FEATURES
+    GWAS_GeneExpr_df = pd.merge(GWAS_data_final,Gene_expr_final,how='left', on=['PTID','AGE','GENDER','EDU','DIAG'])
+    df, y = data_prep1(GWAS_GeneExpr_df,groups,num_cols)
+    print("Shape of common combined data")
     print(df.shape, y.shape)
-    STEP = int(df.shape[1]/20)
+
+    if data_type == 'expr':
+        df, y = df2, y2
+    
+    if data_type == 'gwas':
+        df, y = df1, y1
+        num_cols = []
+    
     ########################################################################################
     #                       RECURSIVE FEATURE ELIMINATION
     ########################################################################################
-
+    STEP = int(df.shape[1]/20)
     estimator = GradientBoostingClassifier(random_state=SEED, n_estimators=2*df.shape[1])
-    cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
-    selector = RFECV(estimator, n_jobs=-1,step=STEP, cv=cv,scoring='balanced_accuracy')
+    cv = RepeatedStratifiedKFold(n_splits=3, n_repeats=3, random_state=SEED)
+    selector = RFECV(estimator, n_jobs=-1,step=STEP, cv=cv, scoring='balanced_accuracy')
     selector = selector.fit(df, y)
     df = df.loc[:, selector.support_]
     print("Shape of final data AFTER FEATURE SELECTION")
     print(df.shape, y.shape)
+    print("Label distribution ater final feature selection")
+    print(Counter(y))
     final_N = df.shape[1]
-    cat_columns = list(set(df.columns) - set(['AGE','EDU']))
+    cat_columns = list(set(df.columns) - set(['AGE','EDU']+num_cols))
     cat_columns_index = [i for i in range(len(df.columns)) if df.columns[i] in cat_columns]
     ########################################################################################
     #                       HYPERPARAMETER GRID SEARCH
@@ -153,15 +219,20 @@ def train_ADNI(groups='CN_AD',features=1000):
 
     # Author: Raghav RV <rvraghav93@gmail.com>
     # License: BSD
-
-    model = Pipeline([
-            ('sampling', SMOTENC(sampling_strategy=0.7, k_neighbors=7, categorical_features = cat_columns_index,random_state=SEED)),
-            ('classifier', GradientBoostingClassifier(random_state=SEED))
-        ])
+    if len(cat_columns_index) > 0:
+        model = Pipeline([
+                ('sampling', SMOTENC(sampling_strategy=0.7, k_neighbors=3, categorical_features = cat_columns_index,random_state=SEED)),
+                ('classifier', GradientBoostingClassifier(random_state=SEED))
+            ])
+    else:
+        model = Pipeline([
+                ('sampling', SMOTE(sampling_strategy=0.7, k_neighbors=3,random_state=SEED)),
+                ('classifier', GradientBoostingClassifier(random_state=SEED))
+            ])
     space = dict()
     X, y = df, y
     # define evaluation
-    cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
+    cv = RepeatedStratifiedKFold(n_splits=3, n_repeats=3, random_state=SEED)
     # define search space
     space = dict()
     space['classifier__n_estimators'] = range(50,7*X.shape[1],50)
@@ -215,7 +286,7 @@ def train_ADNI(groups='CN_AD',features=1000):
 
     plt.legend(loc="best")
     plt.grid(False)
-    plt.savefig(os.path.join(data_path,'results','Grid_search_Using'+'_'+str(features)+'features_for:'+groups+'.png'))
+    plt.savefig(os.path.join(results_path,'Grid_search_Using_'+'_'+str(features)+'_'+str(data_type)+'_features_for:'+groups+'.png'))
 
     ###########################################################################################
     #                           FINAL RUN AND SAVE RESULTS
@@ -225,7 +296,7 @@ def train_ADNI(groups='CN_AD',features=1000):
     acc = []
     imp = []
     mean_fpr = np.linspace(0, 1, 100)
-    cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
+    cv = RepeatedStratifiedKFold(n_splits=3, n_repeats=3, random_state=SEED)
     fig, ax = plt.subplots()
     X, y = df, y
     for train, test in cv.split(X, y):
@@ -236,7 +307,11 @@ def train_ADNI(groups='CN_AD',features=1000):
         y_test = y[test]
         n_estimators = result.best_params_['classifier__n_estimators']
         model = GradientBoostingClassifier(random_state=SEED,n_estimators=n_estimators)
-        oversample = SMOTENC(sampling_strategy=0.7, k_neighbors=7, categorical_features = cat_columns_index,random_state=SEED)
+        if len(cat_columns_index) > 0:
+            oversample = SMOTENC(sampling_strategy=0.7, k_neighbors=3, categorical_features = cat_columns_index,random_state=SEED)
+        else:
+            oversample = SMOTE(sampling_strategy=0.7, k_neighbors=3,random_state=SEED)
+            
         X_train, y_train = oversample.fit_resample(X_train, y_train)
         probas_ = model.fit(X_train, y_train).predict_proba(X_test)
         y_pred = model.predict(X_test)
@@ -270,7 +345,7 @@ def train_ADNI(groups='CN_AD',features=1000):
         title="Receiver operating characteristic")
     ax.legend(loc="lower right")
     plt.show()
-    plt.savefig(os.path.join(data_path,'results','ROC_for:'+groups+'_'+str(features)+'.png'))
+    plt.savefig(os.path.join(results_path,'ROC_for:'+groups+'_'+str(features)+'_'+str(data_type)+'.png'))
     print('for total of ',final_N,"Features")
     print('Mean Balanced Accuracy:',sum(acc)/len(acc))
     print('Mean AUC:',sum(aucs)/len(aucs))
@@ -283,7 +358,7 @@ def train_ADNI(groups='CN_AD',features=1000):
     imp_df['importance'] = imp
 
     imp_df_sorted = imp_df.sort_values(by=['importance'],ascending=False)
-    imp_df_sorted.to_csv(os.path.join(data_path,'results',groups+'_Classification_ranked'+'_'+str(features)+'_features.csv'))
+    imp_df_sorted.to_csv(os.path.join(results_path,groups+'_Classification_ranked'+'_'+str(features)+'_'+str(data_type)+'_features.csv'))
 
     print("END OF THE EXPERIMENT\n")
 
@@ -297,25 +372,29 @@ if  __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--features', type=int, help='Number of features to be used', default=100)
     parser.add_argument('--groups', type=str, help='binary classes to be classified ', default='CN_AD')
+    parser.add_argument('--data_type', type=str, help='type of genetic data to use ', default='combined')
     parser.add_argument('--tuning', type=str, help='To perform hyperparameter sweep or not. Options:[sweep, no_sweep]', default='no_sweep')    
     args = parser.parse_args()
     
     if args.tuning == 'no_sweep':
         acc, my_auc = train_ADNI(features=args.features,
-                groups = args.groups       
+                groups = args.groups, 
+                data_type = args.data_type      
                )
     
     HyperParameters = edict()
     HyperParameters.groups =['CN_AD'] 
-    HyperParameters.features= [100,200,300,400,500,750,1000,1250,1500]
-    HyperParameters.params = [HyperParameters.features,HyperParameters.groups]  
+    HyperParameters.features= [100,200,300,400,500]
+    HyperParameters.data_type= ['expr','gwas','combined']
+    HyperParameters.params = [HyperParameters.features,HyperParameters.groups,HyperParameters.data_type]  
     if args.tuning == 'sweep':
         params = list(itertools.product(*HyperParameters.params))
         for hp in params:
             print("For parameters:",hp)
             acc, my_auc = train_ADNI(
                 features = hp[0],
-                groups = hp[1]     
+                groups = hp[1],
+                data_type = hp[2]     
                )
             print(acc, my_auc)
             print('\n')

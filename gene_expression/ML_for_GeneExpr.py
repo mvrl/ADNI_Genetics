@@ -108,7 +108,7 @@ def train_ADNI(groups='CN_AD',features=1000):
 
     estimator = GradientBoostingClassifier(random_state=SEED,n_estimators=2*df.shape[1])
     cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
-    selector = RFECV(estimator, n_jobs=-1,step=STEP, cv=cv)
+    selector = RFECV(estimator, n_jobs=-1,step=STEP, cv=cv,scoring='balanced_accuracy')
     selector = selector.fit(df, y)
     df = df.loc[:, selector.support_]
     print("Shape of final data AFTER FEATURE SELECTION")
@@ -116,9 +116,7 @@ def train_ADNI(groups='CN_AD',features=1000):
     cat_columns = ['PTGENDER']
     final_N = df.shape[1]
     cat_columns_index = []
-    if 'PTGENDER' in df.columns:
-        cat_columns_index.append(list(df.columns).index('PTGENDER'))
-
+    cat_columns_index = [i for i in range(len(df.columns)) if df.columns[i] in cat_columns]
     ########################################################################################
     #                       HYPERPARAMETER GRID SEARCH
     ########################################################################################
@@ -195,8 +193,8 @@ def train_ADNI(groups='CN_AD',features=1000):
 
     plt.legend(loc="best")
     plt.grid(False)
-    plt.savefig(os.path.join(root_path,'results','Grid_search_Using_'+str(STEP)+'_'+str(features)+'features_for:'+groups+'.png'))
-
+    plt.savefig(os.path.join(root_path,'results','Grid_search_Using'+'_'+str(features)+'features_for:'+groups+'.png'))
+    #plt.savefig(os.path.join(root_path,'Grid_search_Using_'+str(STEP)+'_'+str(features)+'features_for:'+groups+'.png'))
     ###########################################################################################
     #                           FINAL RUN AND SAVE RESULTS
     ###########################################################################################
@@ -253,7 +251,8 @@ def train_ADNI(groups='CN_AD',features=1000):
         title="Receiver operating characteristic")
     ax.legend(loc="lower right")
     plt.show()
-    plt.savefig(os.path.join(root_path,'results','ROC_for:'+groups+'_'+str(STEP)+'_'+str(features)+'.png'))
+    plt.savefig(os.path.join(root_path,'results','ROC_for:'+groups+'_'+str(features)+'.png'))
+    #plt.savefig(os.path.join(root_path,'ROC_for:'+groups+'_'+str(STEP)+'_'+str(features)+'.png'))
     print('for total of ',final_N,"Features")
     print('Mean Balanced Accuracy:',sum(acc)/len(acc))
     print('Mean AUC:',sum(aucs)/len(aucs))
@@ -266,7 +265,8 @@ def train_ADNI(groups='CN_AD',features=1000):
     imp_df['importance'] = imp
 
     imp_df_sorted = imp_df.sort_values(by=['importance'],ascending=False)
-    imp_df_sorted.to_csv(os.path.join(root_path,'results',groups+'_Classification_ranked_'+str(STEP)+'_'+str(features)+'_GeneExpr_features.csv'))
+    imp_df_sorted.to_csv(os.path.join(root_path,'results',groups+'_Classification_ranked'+'_'+str(features)+'_GeneExpr_features.csv'))
+    #imp_df_sorted.to_csv(os.path.join(root_path,groups+'_Classification_ranked_'+str(STEP)+'_'+str(features)+'_GeneExpr_features.csv'))
 
     print("END OF THE EXPERIMENT")
 
@@ -291,6 +291,7 @@ if  __name__ == '__main__':
     HyperParameters = edict()
     HyperParameters.groups =['CN_AD','CN_EMCI','CN_LMCI', 'EMCI_LMCI','EMCI_AD','LMCI_AD'] 
     HyperParameters.features= [100,200,300,400,500]
+    #HyperParameters.features= [750,1000]
     HyperParameters.params = [HyperParameters.features,HyperParameters.groups]  
     if args.tuning == 'sweep':
         params = list(itertools.product(*HyperParameters.params))
