@@ -229,14 +229,16 @@ def train_ADNI(groups='CN_AD',features=1000,data_type = 'combined'):
                 ('sampling', SMOTE(sampling_strategy=0.7, k_neighbors=3,random_state=SEED)),
                 ('classifier', GradientBoostingClassifier(random_state=SEED))
             ])
-    space = dict()
+
     X, y = df, y
     # define evaluation
     cv = RepeatedStratifiedKFold(n_splits=3, n_repeats=3, random_state=SEED)
     # define search space
     space = dict()
-    space['classifier__n_estimators'] = range(50,7*X.shape[1],50)
-
+    if 7*X.shape[1] < 50:
+        space['classifier__n_estimators'] = range(50,200,50) #for case where number of features is too low. 
+    else:
+        space['classifier__n_estimators'] = range(50,7*X.shape[1],50)
     scoring = {'AUC': 'roc_auc', 'balanced_accuracy':'balanced_accuracy'}
     # define search
     search = GridSearchCV(model, space,n_jobs=-1, cv=cv,scoring=scoring, refit='balanced_accuracy', return_train_score=True)
@@ -246,7 +248,6 @@ def train_ADNI(groups='CN_AD',features=1000,data_type = 'combined'):
     print('Best Score: %s' % result.best_score_)
     print('Best Hyperparameters: %s' % result.best_params_)
     results = search.cv_results_
-
     print(__doc__)
     plt.figure(figsize=(13, 13))
     plt.title("GridSearchCV evaluating using multiple scorers simultaneously",

@@ -142,7 +142,10 @@ def train_ADNI(groups='CN_AD',features=1000):
     cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
     # define search space
     space = dict()
-    space['classifier__n_estimators'] = range(50,7*X.shape[1],50)
+    if 7*X.shape[1] < 50:
+        space['classifier__n_estimators'] = range(50,200,50) #for case where number of features is too low. 
+    else:
+        space['classifier__n_estimators'] = range(50,7*X.shape[1],50)
 
     scoring = {'AUC': 'roc_auc', 'balanced_accuracy':'balanced_accuracy'}
     # define search
