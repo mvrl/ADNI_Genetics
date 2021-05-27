@@ -71,14 +71,14 @@ def train_ADNI(groups='CN_AD',features=1000,pruning='prune',data_type = 'combine
             df, y = df1, y1
             STEP = STEP1
             if pruning == 'prune':
-                df, y = RFE(df,y,STEP)
+                df, y = RFE(df,y,STEP,SEED)
             print("Shape of final "+ data_type+" data AFTER FEATURE SELECTION")
             
         if data_type == 'gwas':
             df, y = df2, y2
             STEP = STEP2
             if pruning == 'prune':
-                df, y = RFE(df,y,STEP)
+                df, y = RFE(df,y,STEP,SEED)
             print("Shape of final "+ data_type+" data AFTER FEATURE SELECTION")
 
         if data_type == 'combined':
@@ -87,11 +87,11 @@ def train_ADNI(groups='CN_AD',features=1000,pruning='prune',data_type = 'combine
             GWAS_DIAG = GWAS_data_final.DIAG
             GeneExpr_DIAG = Gene_expr_final.DIAG
             if pruning == 'prune':
-                df1, y1 = RFE(df1,y1,STEP1)
+                df1, y1 = RFE(df1,y1,STEP1,SEED)
             df1['PTID'] = list(GWAS_PTID)
             df1['DIAG'] = list(GWAS_DIAG)
             if pruning == 'prune':
-                df2, y2 = RFE(df2,y2,STEP2)
+                df2, y2 = RFE(df2,y2,STEP2,SEED)
             df2['PTID'] = list(GeneExpr_PTID)
             df2['DIAG'] = list(GeneExpr_DIAG)
 
@@ -183,7 +183,7 @@ if  __name__ == '__main__':
     HyperParameters.groups =['CN_AD'] 
     HyperParameters.features= [100,200,300,400,500]
     #HyperParameters.features= [100]
-    HyperParameters.fusion = ['early','late']
+    HyperParameters.fusion = ['late','early']
     HyperParameters.data_type= ['expr','gwas','combined']
     HyperParameters.pruning = ['prune','no_prune']
     HyperParameters.params = [HyperParameters.features,HyperParameters.fusion,HyperParameters.pruning,HyperParameters.groups,HyperParameters.data_type]  
@@ -205,6 +205,6 @@ if  __name__ == '__main__':
                                                      'initial_feats':hp[0],'Pruning':hp[2],'final_feats':final_N,
                                                 'best_n_estimators':n_estimators,'Macro_ACC':acc,'Macro_AUC':my_auc},
                                                 ignore_index = True)
-        
+    
         final_result.to_csv(os.path.join(results_path,'sweep_results.csv'))
         
