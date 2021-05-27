@@ -3,21 +3,14 @@ import os
 import pandas as pd
 from pandas import read_csv
 from collections import Counter
-from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import RepeatedStratifiedKFold
-from sklearn.feature_selection import RFECV
-from sklearn.ensemble import (RandomForestClassifier,
-                              GradientBoostingClassifier)
-from sklearn.model_selection import RandomizedSearchCV
+from sklearn.ensemble import GradientBoostingClassifier
 from imblearn.pipeline import Pipeline
-from imblearn.over_sampling import ADASYN, SMOTE, SMOTENC
+from imblearn.over_sampling import SMOTE, SMOTENC
 import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import make_scorer
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import roc_curve, auc, f1_score, roc_auc_score, balanced_accuracy_score
-from sklearn.feature_selection import RFECV
+from sklearn.metrics import roc_curve, auc, roc_auc_score, balanced_accuracy_score
 from easydict import EasyDict as edict
 import itertools
 import warnings
@@ -25,6 +18,7 @@ warnings.filterwarnings("ignore")
 
 overall_groups = ['CN_AD','CN_EMCI','CN_LMCI','EMCI_LMCI','EMCI_AD','LMCI_AD']
 SEED = 1
+best_results_path = '/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/gene_expression/results/'
 ############################################################################################
 #                               SOME UTILITIES
 ###########################################################################################
@@ -61,7 +55,7 @@ def train_ADNI(groups='CN_AD',best_feats_map=''):
     groups = groups
     rank_df = pd.read_csv(os.path.join(root_path,'results',best_feats_map))
     selectors = list(rank_df['features'])
-    features = int(best_feats_map.split('_')[3])
+    features = int(best_feats_map.split('_')[4])
     N = features
     print("EXPERIMENT LOG FOR:",groups)
     print('\n')
@@ -104,7 +98,7 @@ def train_ADNI(groups='CN_AD',best_feats_map=''):
     print(df.shape, y.shape)
 
     ########################################################################################
-    #                       RECURSIVE FEATURE ELIMINATION
+    #                       RECURSIVE FEATURE ELIMINATION (NOT Ncessary here)
     ########################################################################################
     df = df.loc[:, selectors]
     print("Shape of final data AFTER FEATURE SELECTION")
@@ -273,7 +267,7 @@ if  __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--best_feats_map', type=str, help='Ranked list of best features obtained for the group', default='path_to_feat_map')
+    parser.add_argument('--best_feats_map', type=str, help='Ranked list of best features obtained for the group', default='CN_AD_Classification_ranked_400_GeneExpr_features.csv')
     parser.add_argument('--groups', type=str, help='binary classes to be classified ', default='CN_AD')
     parser.add_argument('--tuning', type=str, help='To perform hyperparameter sweep or not. Options:[sweep, no_sweep]', default='no_sweep')    
     args = parser.parse_args()
@@ -284,17 +278,23 @@ if  __name__ == '__main__':
                )
     
     HyperParameters = edict()
-    HyperParameters.best_feats_map = {'CN_AD':'','CN_EMCI':'','CN_LMCI':'', 'EMCI_LMCI':'','EMCI_AD':'','LMCI_AD':''}
+    best_map = {
+    'CN_AD':'CN_AD_Classification_ranked_400_GeneExpr_features.csv',
+    'CN_EMCI':'CN_EMCI_Classification_ranked_300_GeneExpr_features.csv',
+    'CN_LMCI':'CN_LMCI_Classification_ranked_400_GeneExpr_features.csv', 
+    'EMCI_LMCI':'EMCI_LMCI_Classification_ranked_400_GeneExpr_features.csv',
+    'EMCI_AD':'EMCI_AD_Classification_ranked_200_GeneExpr_features.csv',
+    'LMCI_AD':'LMCI_AD_Classification_ranked_100_GeneExpr_features.csv'
+    }
     HyperParameters.groups = ['CN_AD','CN_EMCI','CN_LMCI', 'EMCI_LMCI','EMCI_AD','LMCI_AD']
-    #HyperParameters.features= [100,200,300,400,500]
-    HyperParameters.params = [HyperParameters.best_feats_map,HyperParameters.groups]  
+    HyperParameters.params = [HyperParameters.groups]  
     if args.tuning == 'sweep':
         params = list(itertools.product(*HyperParameters.params))
         for hp in params:
             print("For parameters:",hp)
             acc, my_auc = train_ADNI(
-                features = hp[0],
-                groups = hp[1]     
+                best_feats_map = best_map[hp[0]],
+                groups = hp[0]     
                )
             print(acc, my_auc)
             print('\n')
