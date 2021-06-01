@@ -98,7 +98,7 @@ if  __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--features', type=int, help='Number of features to be used', default=100)
+    parser.add_argument('--features', type=int, help='Number of features to be used', default=400)
     parser.add_argument('--pruning', type=str, help='Do pruning of features or not. Options:[prune,no_prune]', default='prune')
     parser.add_argument('--groups', type=str, help='binary classes to be classified ', default='CN_AD')
     parser.add_argument('--tuning', type=str, help='To perform hyperparameter sweep or not. Options:[sweep, no_sweep]', default='no_sweep')    

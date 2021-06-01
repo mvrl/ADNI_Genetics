@@ -39,7 +39,7 @@ def prepare_targets(y,groups):
     op = [count_dict[i] for i in y]
     return np.asarray(op)
 
-#Very inefficient approach! but is easier to visualize in my head
+#Inefficient approach! but is easier to visualize in my head
 def data_prep(df,groups): #This takes the dataframe and returns the one hot encoded expansion of input features
     target = prepare_targets(list(df.DIAG),groups)
     df1 = df.drop(columns=['PTID','DIAG']).reset_index(drop=True) #Patient ID and DIAG not needed
@@ -61,6 +61,14 @@ def data_prep(df,groups): #This takes the dataframe and returns the one hot enco
     return df_out, target.ravel()
 
 def GWAS_data_prep(groups,data_path,features):
+
+    # To be able to run this following files should be ready ADNIMERGE.csv from the ADNI website, GWAS_CN_AD12.{fam,ped,map} and top2000_snps.txt
+    # top2000_snps.txt is the list of top 2000 SNPs as shown in the Association analysis step in GWAS using PLINK (Refer GWAS_ADNI folder in this repo)
+    # Using top2000_snps.txt, only those SNPs are extracted from the files "GWAS_1_2_3_clean_CN_AD.{fam,bed,bim} produced at the end of Quality Control step in GWAS using PLINK. (Refer GWAS_ADNI folder in this repo)
+    # Now the curated SNP data (with only 2000 SNPs) is converted to ped file set: GWAS_CN_AD12.{fam,ped,map} using --recode option in PLINK
+
+    # In summary: Extract top 2000 snps from association analyis results, use it to curate the Quality Controlled and SNP filtered dataset, Finally convert it to .ped file to read like text file
+
     N = features
     df = pd.read_csv(os.path.join(data_path,'data','ADNIMERGE.csv'),low_memory=False)
     df_bl = df[df['VISCODE']=='bl']
@@ -78,7 +86,7 @@ def GWAS_data_prep(groups,data_path,features):
     print(Counter(df_GWAS['DX_bl']))
 
     data = []
-    with open(os.path.join(data_path,'data','GWAS_CN_AD12.ped'),'r') as infile:   
+    with open(os.path.join(data_path,'data','GWAS_CN_AD12.ped'),'r') as infile:  
         text = infile.read().strip().split('\n')
         for line in text:
             gene = line.split(' ')[6:]
