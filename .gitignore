@@ -11,4 +11,4 @@ data/
 */*.txt
 */*.log
 */*.ipynb
-
+GWAS_Gene_Expr/
