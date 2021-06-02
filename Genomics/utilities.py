@@ -99,9 +99,11 @@ def GWAS_data_prep(groups,data_path,features):
             output = [PTID] + [AGE] + [GENDER] + [EDU] + [DIAG]+ GENOME
             data.append(output)
 
-
-    with open(os.path.join(data_path,'data','top2000_snps.txt'),'r') as infile:
-        snps = infile.read().strip().split('\n')
+    snps = []
+    with open(os.path.join(data_path,'data','GWAS_CN_AD12.map'),'r') as infile:
+        text = infile.read().strip().split('\n')
+        for line in text:
+            snps.append(line.split('\t')[0]+'_'+line.split('\t')[1])
 
     column_names = ['PTID','AGE','GENDER','EDU']+['DIAG']+snps
 
