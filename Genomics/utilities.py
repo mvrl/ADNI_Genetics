@@ -140,8 +140,10 @@ def GridSearch(df,y,cat_columns_index,results_path,fname,SEED):
     space = dict()
     if 7*X.shape[1] < 50:
         space['classifier__n_estimators'] = range(50,200,50) #for case where number of features is too low. 
+    if X.shape[1] > 2500: 
+        space['classifier__n_estimators'] = range(50,2*X.shape[1],50) #for case where number of features is too high 
     else:
-        space['classifier__n_estimators'] = range(50,7*X.shape[1],50)
+        space['classifier__n_estimators'] = range(50,7*X.shape[1],50) #for normal case
     scoring = {'AUC': 'roc_auc', 'balanced_accuracy':'balanced_accuracy'}
     # define search
     search = GridSearchCV(model, space,n_jobs=-1, cv=cv,scoring=scoring, refit='balanced_accuracy', return_train_score=True)
