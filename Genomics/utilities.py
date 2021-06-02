@@ -67,7 +67,7 @@ def GWAS_data_prep(groups,data_path,features):
     # Using top2000_snps.txt, only those SNPs are extracted from the files "GWAS_1_2_3_clean_CN_AD.{fam,bed,bim} produced at the end of Quality Control step in GWAS using PLINK. (Refer GWAS_ADNI folder in this repo)
     # Now the curated SNP data (with only 2000 SNPs) is converted to ped file set: GWAS_CN_AD12.{fam,ped,map} using --recode option in PLINK
 
-    # In summary: Extract top 2000 snps from association analyis results, use it to curate the Quality Controlled and SNP filtered dataset, Finally convert it to .ped file to read like text file
+    # In summary: Extract top 2000 snps from association analyis results, use it to curate the Quality Controlled and SNP filtered dataset, Finally convert it to .ped and .map file to read like text file
 
     N = features
     df = pd.read_csv(os.path.join(data_path,'data','ADNIMERGE.csv'),low_memory=False)
