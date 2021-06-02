@@ -227,21 +227,21 @@ def GeneExpr_data_prep(groups,GeneExpr_data_path,N):
 def combined_data_prep(groups, df_final_GWAS, curr_df):
     common_subjects = set(df_final_GWAS['PTID']).intersection(set(curr_df['Unnamed: 0']))
     GWAS_data_final = df_final_GWAS[pd.DataFrame(df_final_GWAS.PTID.tolist()).isin(common_subjects).any(1).values]
-    df1, y1 = data_prep1(GWAS_data_final,groups)
+    df_gwas, y_gwas = data_prep1(GWAS_data_final,groups)
     print("Shape of common GWAS data")
-    print(df1.shape, y1.shape)
+    print(df_gwas.shape, y_gwas.shape)
 
     Gene_expr_final = curr_df[pd.DataFrame(curr_df['Unnamed: 0'].tolist()).isin(common_subjects).any(1).values]
     cols = Gene_expr_final.columns
     num_cols = list(cols[5:])
     Gene_expr_final.columns = ['PTID','AGE','GENDER','EDU','DIAG']+list(cols[5:])
-    df2, y2 = data_prep2(Gene_expr_final,groups)
-    df2['EDU']=df2['EDU'].astype('float64')
+    df_exp, y_exp = data_prep2(Gene_expr_final,groups)
+    df_exp['EDU']=df_exp['EDU'].astype('float64')
 
     print("Shape of common GeneExpr data")
-    print(df2.shape, y2.shape)
+    print(df_exp.shape, y_exp.shape)
 
-    return GWAS_data_final,Gene_expr_final,df1,y1,df2,y2,num_cols
+    return GWAS_data_final,Gene_expr_final,df_gwas,y_gwas,df_exp,y_exp,num_cols
 
 
 def save_results(X,ax,imp,tprs, mean_fpr,aucs,acc,results_path,final_N,fname):
