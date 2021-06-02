@@ -150,7 +150,7 @@ def GRID_search(df,y,cat_columns_index,results_path,fname,SEED):
 
 def GWAS_data_prep(GWAS_data_path,results_path,features):   
     #Number of top SNPs to take as features
-    N = 2*features # Twice than Gene Expression because we saw higher number of GWAS needed for better performance
+    N = features 
     df = pd.read_csv(os.path.join(GWAS_data_path,'data','ADNIMERGE.csv'),low_memory=False)
     df_bl = df[df['VISCODE']=='bl']
     print('Overall label distribution on ADNIMERGE.csv')
@@ -180,17 +180,23 @@ def GWAS_data_prep(GWAS_data_path,results_path,features):
             output = [PTID] + [AGE] + [GENDER] + [EDU] + [DIAG]+ GENOME
             data.append(output)
 
-    with open(os.path.join(GWAS_data_path,'data','top2000_snps.txt'),'r') as infile:
-        snps = infile.read().strip().split('\n')
-
+    snps = []
+    with open(os.path.join(GWAS_data_path,'data','GWAS_CN_AD12.map'),'r') as infile:
+        text = infile.read().strip().split('\n')
+        for line in text:
+            snps.append(line.split('\t')[0]+'_'+line.split('\t')[1])
+    
     column_names = ['PTID','AGE','GENDER','EDU']+['DIAG']+snps
 
     df_final = pd.DataFrame(data,columns=column_names)
-    df_final.to_csv(os.path.join(results_path,'_'+str(features)+'_'+'GWAS12_data_Dx_bl.csv'))
+    df_final.to_csv(os.path.join(results_path,'final_'+str(features)+'_GWAS12_data_Dx_bl.csv'))
+    df_final = pd.read_csv(os.path.join(results_path,'final_'+str(features)+'_GWAS12_data_Dx_bl.csv'),na_values=["00"])
+    
+    my_snps = list(pd.read_csv(os.path.join(GWAS_data_path,'data','top2000_snps.csv'))['top_snps'])
+    selected_features = ['PTID','AGE','GENDER','EDU']+['DIAG'] + my_snps
+    df_final = df_final.loc[:,selected_features]
 
-    df_final = pd.read_csv(os.path.join(results_path,'_'+str(features)+'_'+'GWAS12_data_Dx_bl.csv'),na_values=["00"])
-    df_final = df_final.iloc[:, 0:N+6] #Only top N snps
-    df_final = df_final.drop(columns=['Unnamed: 0'])
+    df_final = df_final.iloc[:, 0:N+5] #Only top N snps among the top 2000
     df_final.dropna(inplace=True)
     print('Label distribution on GWAS generated file after dropping Missing individuals')
     print(Counter(df_final.DIAG))
