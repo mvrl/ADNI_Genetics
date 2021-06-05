@@ -5,10 +5,13 @@ data/
 */data
 */results
 */results_inflated
+*/ML_for_GeneExpr_inflated.py
 */results_test1
 */results_test2
 */results_test3
+*/results_test
 */*.txt
 */*.log
 */*.ipynb
-GWAS_Gene_Expr/
+
+

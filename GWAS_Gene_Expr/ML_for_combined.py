@@ -62,33 +62,34 @@ def train_ADNI(groups='CN_AD',features=1000,pruning='prune',data_type = 'early_c
         if pruning == 'prune':
             STEP = int(df.shape[1]/20)
             df, y = RFE(df,y,STEP,SEED)
-            
-    if data_type == 'late_combined':
-        ###LATE FUSION OF INPUT FEATURES
-        GWAS_PTID = GWAS_data_final.PTID
-        GeneExpr_PTID = Gene_expr_final.PTID
-        GWAS_DIAG = GWAS_data_final.DIAG
-        GeneExpr_DIAG = Gene_expr_final.DIAG
 
-        if pruning == 'prune':
-            STEP = int(df_gwas.shape[1]/20)
-            df_gwas, y_gwas = RFE(df_gwas,y_gwas,STEP,SEED)
-            STEP = int(df_exp.shape[1]/20)
-            df_exp, y_exp = RFE(df_exp,y_exp,STEP,SEED)
+    #Commented out late_combined case as it had worse performance than early_combined       
+    # if data_type == 'late_combined':  
+    #     ###LATE FUSION OF INPUT FEATURES
+    #     GWAS_PTID = GWAS_data_final.PTID
+    #     GeneExpr_PTID = Gene_expr_final.PTID
+    #     GWAS_DIAG = GWAS_data_final.DIAG
+    #     GeneExpr_DIAG = Gene_expr_final.DIAG
 
-        df_gwas['PTID'] = list(GWAS_PTID)
-        df_gwas['DIAG'] = list(GWAS_DIAG)    
-        df_exp['PTID'] = list(GeneExpr_PTID)
-        df_exp['DIAG'] = list(GeneExpr_DIAG)
+    #     if pruning == 'prune':
+    #         STEP = int(df_gwas.shape[1]/20)
+    #         df_gwas, y_gwas = RFE(df_gwas,y_gwas,STEP,SEED)
+    #         STEP = int(df_exp.shape[1]/20)
+    #         df_exp, y_exp = RFE(df_exp,y_exp,STEP,SEED)
 
-        ## LATE FUSION
-        if 'AGE' in df_gwas.columns and 'AGE' in df_exp.columns:
-            GWAS_GeneExpr_df = pd.merge(df_gwas,df_exp,how='left',on=['PTID','DIAG','AGE'])
-        else:
-            GWAS_GeneExpr_df = pd.merge(df_gwas,df_exp,how='left',on=['PTID','DIAG'])
-        y = prepare_targets(list(GWAS_GeneExpr_df.DIAG),groups).ravel()
-        df = GWAS_GeneExpr_df.drop(columns=['PTID','DIAG']).reset_index(drop=True) #Patient ID and DIAG not needed
-        print("Shape of final "+ data_type+" data AFTER FEATURE SELECTION")
+    #     df_gwas['PTID'] = list(GWAS_PTID)
+    #     df_gwas['DIAG'] = list(GWAS_DIAG)    
+    #     df_exp['PTID'] = list(GeneExpr_PTID)
+    #     df_exp['DIAG'] = list(GeneExpr_DIAG)
+
+    #     ## LATE FUSION
+    #     if 'AGE' in df_gwas.columns and 'AGE' in df_exp.columns:
+    #         GWAS_GeneExpr_df = pd.merge(df_gwas,df_exp,how='left',on=['PTID','DIAG','AGE'])
+    #     else:
+    #         GWAS_GeneExpr_df = pd.merge(df_gwas,df_exp,how='left',on=['PTID','DIAG'])
+    #     y = prepare_targets(list(GWAS_GeneExpr_df.DIAG),groups).ravel()
+    #     df = GWAS_GeneExpr_df.drop(columns=['PTID','DIAG']).reset_index(drop=True) #Patient ID and DIAG not needed
+    #     print("Shape of final "+ data_type+" data AFTER FEATURE SELECTION")
 
     print(df.shape)
     print("Label distribution ater final feature selection")
@@ -166,8 +167,7 @@ if  __name__ == '__main__':
     HyperParameters = edict()
     HyperParameters.groups =['CN_AD'] 
     HyperParameters.features= [100,200,300,400,500]
-    #HyperParameters.features= [100]
-    HyperParameters.data_type= ['expr','gwas','early_combined','late_combined']
+    HyperParameters.data_type= ['expr','gwas','early_combined']
     HyperParameters.pruning = ['prune','no_prune']
     HyperParameters.params = [HyperParameters.features,HyperParameters.pruning,HyperParameters.groups,HyperParameters.data_type]  
     if args.tuning == 'sweep':
