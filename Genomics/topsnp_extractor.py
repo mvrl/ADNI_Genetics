@@ -1,5 +1,5 @@
 #This script will use the ranked list of GWAS Association results
-# logistic_results.assoc.logistic.adjusted and produces top2000_snps.txt
+# logistic_results.assoc.logistic.adjusted and produces top2000_snps.csv
 
 import os
 import pandas as pd
