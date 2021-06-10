@@ -279,12 +279,12 @@ if  __name__ == '__main__':
     
     HyperParameters = edict()
     best_map = {
-    'CN_AD':'CN_AD_Classification_ranked_400_GeneExpr_features.csv',
-    'CN_EMCI':'CN_EMCI_Classification_ranked_300_GeneExpr_features.csv',
-    'CN_LMCI':'CN_LMCI_Classification_ranked_400_GeneExpr_features.csv', 
-    'EMCI_LMCI':'EMCI_LMCI_Classification_ranked_400_GeneExpr_features.csv',
-    'EMCI_AD':'EMCI_AD_Classification_ranked_200_GeneExpr_features.csv',
-    'LMCI_AD':'LMCI_AD_Classification_ranked_100_GeneExpr_features.csv'
+    'CN_AD':'Features_ranked_for_CN_AD_400_prune.csv',
+    'CN_EMCI':'Features_ranked_for_CN_EMCI_300_prune.csv',
+    'CN_LMCI':'Features_ranked_for_CN_LMCI_300_prune.csv', 
+    'EMCI_LMCI':'Features_ranked_for_EMCI_LMCI_400_prune.csv',
+    'EMCI_AD':'Features_ranked_for_EMCI_AD_300_prune.csv',
+    'LMCI_AD':'Features_ranked_for_LMCI_AD_500_prune.csv'
     }
     HyperParameters.groups = ['CN_AD','CN_EMCI','CN_LMCI', 'EMCI_LMCI','EMCI_AD','LMCI_AD']
     HyperParameters.params = [HyperParameters.groups]  
