@@ -21,7 +21,7 @@ RESULTS = 'results' # Name of results folder, 'results' for overall grid search,
 data_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/Genomics/'
 results_path = os.path.join(data_path,RESULTS)
 ##########################################################################################################
-def train_ADNI(groups='CN_AD',features=1000,n_estimators=1050):
+def train_ADNI(groups='CN_AD',features=1000,n_estimators=950):
     
     groups = groups
     print("EXPERIMENT LOG FOR:",groups)
@@ -90,7 +90,7 @@ if  __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--features', type=int, help='Number of features to be used', default=1000)
-    parser.add_argument('--n_estimators', type=int, help='Number of estimators for best model', default=1050)
+    parser.add_argument('--n_estimators', type=int, help='Number of estimators for best model', default=950)
     parser.add_argument('--groups', type=str, help='binary classes to be classified ', default='CN_AD')
     args = parser.parse_args()
     
