@@ -25,8 +25,7 @@ expr_df = pd.read_csv('/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Ge
 GWAS_df = pd.read_csv('/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/GWAS_Gene_Expr/data/common_gwas_expanded.csv')
 combined_df = pd.read_csv('/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/GWAS_Gene_Expr/data/common_combined_expanded.csv')
 
-#data_type = ['expr','gwas','combined','pruned_combined']
-data_type = ['pruned_combined']
+data_type = ['expr','gwas','combined','pruned_combined']
 for data in data_type:
     print("Experiment for:",data)
     if data == 'expr':
