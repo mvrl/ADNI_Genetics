@@ -112,7 +112,7 @@ if  __name__ == '__main__':
                )
     
     HyperParameters = edict()
-    HyperParameters.groups =['CN_AD','CN_EMCI','CN_LMCI', 'EMCI_LMCI','EMCI_AD','LMCI_AD'] 
+    HyperParameters.groups = ['CN_AD','CN_EMCI','CN_LMCI','EMCI_LMCI','EMCI_AD','LMCI_AD'] 
     HyperParameters.features= [100,200,300,400,500]
     HyperParameters.pruning = ['prune','no_prune']
     HyperParameters.params = [HyperParameters.features,HyperParameters.pruning,HyperParameters.groups]  

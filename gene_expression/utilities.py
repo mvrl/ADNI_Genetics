@@ -112,7 +112,7 @@ def GridSearch(df,y,cat_columns_index,SAMPLING,results_path,fname,SEED):
 
     scoring = {'AUC': 'roc_auc', 'balanced_accuracy':'balanced_accuracy'}
     # define search
-    search = GridSearchCV(model, space,n_jobs=-1, cv=cv,scoring=scoring, refit='balanced_accuracy', return_train_score=True)
+    search = GridSearchCV(model, space,n_jobs=-1, cv=cv,scoring=scoring, refit='balanced_accuracy', return_train_score=True) #refit on ACC
     # execute search
     result = search.fit(X, y)
     # summarize result
@@ -170,8 +170,8 @@ def save_results(X,ax,imp,tprs, mean_fpr,aucs,acc,results_path,final_N,fname):
 
     mean_tpr = np.mean(tprs, axis=0)
     mean_tpr[-1] = 1.0
-    mean_auc = auc(mean_fpr, mean_tpr)
-    std_auc = np.std(aucs)
+    mean_auc = round(auc(mean_fpr, mean_tpr),2)
+    std_auc = round(np.std(aucs),2)
     ax.plot(mean_fpr, mean_tpr, color='b',
             label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f)' % (mean_auc, std_auc),
             lw=2, alpha=.8)
