@@ -21,9 +21,9 @@ SEED = 1
 SAMPLING = 0.7 #For SMOTENC
 np.random.seed(SEED)
 results_path = '/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/GWAS_Gene_Expr/results_test/'
-expr_df = pd.read_csv('/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/GWAS_Gene_Expr/data/common_geneExpr.csv')
-GWAS_df = pd.read_csv('/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/GWAS_Gene_Expr/data/common_gwas_expanded.csv')
-combined_df = pd.read_csv('/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/GWAS_Gene_Expr/data/common_combined_expanded.csv')
+expr_df = pd.read_csv('/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/GWAS_Gene_Expr/data/common_geneExpr.csv').drop(columns=['Unnamed: 0']).reset_index(drop=True)
+GWAS_df = pd.read_csv('/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/GWAS_Gene_Expr/data/common_gwas_expanded.csv').drop(columns=['Unnamed: 0']).reset_index(drop=True)
+combined_df = pd.read_csv('/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/GWAS_Gene_Expr/data/common_combined_expanded.csv').drop(columns=['Unnamed: 0']).reset_index(drop=True)
 
 data_type = ['expr','gwas','combined','pruned_combined']
 for data in data_type:
