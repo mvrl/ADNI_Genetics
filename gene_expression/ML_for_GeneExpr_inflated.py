@@ -281,7 +281,7 @@ if  __name__ == '__main__':
     best_map = {
     'CN_AD':'Features_ranked_for_CN_AD_400_prune.csv',
     'CN_EMCI':'Features_ranked_for_CN_EMCI_300_prune.csv',
-    'CN_LMCI':'Features_ranked_for_CN_LMCI_300_prune.csv', 
+    'CN_LMCI':'Features_ranked_for_CN_LMCI_400_prune.csv', 
     'EMCI_LMCI':'Features_ranked_for_EMCI_LMCI_400_prune.csv',
     'EMCI_AD':'Features_ranked_for_EMCI_AD_300_prune.csv',
     'LMCI_AD':'Features_ranked_for_LMCI_AD_500_prune.csv'
