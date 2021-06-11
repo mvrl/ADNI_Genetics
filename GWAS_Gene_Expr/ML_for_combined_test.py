@@ -45,7 +45,7 @@ for data in data_type:
     if data =='pruned_combined':
         my_df = combined_df
         y = my_df['DIAG']
-        df = my_df.drop(columns=['PTID','DIAG','Unnamed: 0']).reset_index(drop=True) #Patient ID and DIAG not needed
+        df = my_df.drop(columns=['PTID','DIAG']).reset_index(drop=True) #Patient ID and DIAG not needed
         STEP = int(df.shape[1]/20)
         df, y = RFE(df,y,STEP,SEED)
         cat_columns = [col for col in my_df.columns if 'rs' in col or 'GENDER' in col]  
