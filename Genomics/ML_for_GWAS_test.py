@@ -17,7 +17,7 @@ warnings.filterwarnings("ignore")
 #########################################################################
 SEED = 1
 np.random.seed(SEED)
-RESULTS = 'results' # Name of results folder, 'results' for overall grid search, results_test1, results_test2, results_test3 for 3 rounds of best model and features.
+RESULTS = 'results_test' # Name of results folder, 'results' for overall grid search, results_test1, results_test2, results_test3 for 3 rounds of best model and features.
 data_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/Genomics/'
 results_path = os.path.join(data_path,RESULTS)
 ##########################################################################################################
@@ -32,8 +32,8 @@ def train_ADNI(groups='CN_AD',features=1000,n_estimators=950):
     df, y = GWAS_data_prep(groups,data_path,features)
     print("Shape of final data BEFORE FEATURE SELECTION")
     print(df.shape, y.shape)
-    fname = '_'.join([groups,str(features),str(n_estimators)])
-    rank_df = pd.read_csv(os.path.join(data_path,'results','Features_ranked_for_CN_AD_1000_prune.csv'))
+    fname = '_'.join(['best_test',groups,str(features),str(n_estimators)])
+    rank_df = pd.read_csv(os.path.join(data_path,'results_test','Features_ranked_for_CN_AD_1000_prune.csv'))
     selectors = list(rank_df['features'])
     df = df.loc[:, selectors]
     print("Shape of final data AFTER FEATURE SELECTION")
