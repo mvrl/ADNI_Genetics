@@ -120,7 +120,7 @@ def GWAS_data_prep(groups,data_path,features):
     print('Label distribution on GWAS generated file after dropping Missing individuals')
     print(Counter(df_final.DIAG))
     df, y = data_prep(df_final,groups)
-    return df, y
+    return df, y, list(df_final.PTID)
 
 
 def GridSearch(df,y,cat_columns_index,results_path,fname,SEED):

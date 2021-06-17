@@ -29,7 +29,7 @@ def train_ADNI(groups='CN_AD',features=1000,pruning='prune'):
     
     #Number of top SNPs to take as features
     N = features
-    df, y = GWAS_data_prep(groups,data_path,features)
+    df, y, _ = GWAS_data_prep(groups,data_path,features)
     print("Shape of final data BEFORE FEATURE SELECTION")
     print(df.shape, y.shape)
     STEP = int(df.shape[1]/20)

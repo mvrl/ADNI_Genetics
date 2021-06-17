@@ -29,7 +29,7 @@ def train_ADNI(groups='CN_AD',features=1000,n_estimators=950):
     
     #Number of top SNPs to take as features
     N = features
-    df, y = GWAS_data_prep(groups,data_path,features)
+    df, y, ptid = GWAS_data_prep(groups,data_path,features)
     print("Shape of final data BEFORE FEATURE SELECTION")
     print(df.shape, y.shape)
     fname = '_'.join(['best_test',groups,str(features),str(n_estimators)])
@@ -55,6 +55,10 @@ def train_ADNI(groups='CN_AD',features=1000,n_estimators=950):
     cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
     fig, ax = plt.subplots()
     X, y = df, y
+    df_to_save = df
+    df_to_save['DIAG'] = y
+    df_to_save['PTID'] = ptid
+    df_to_save.to_csv(os.path.join(results_path,'data_for_best.csv'))
     for train, test in cv.split(X, y):
         X_train = X.iloc[train]
         y_train = y[train]
