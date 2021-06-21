@@ -13,6 +13,6 @@ data/
 */results_test
 */*.txt
 */*.log
-*/*.ipynb
+
 
 

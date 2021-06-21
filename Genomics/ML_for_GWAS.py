@@ -113,7 +113,7 @@ if  __name__ == '__main__':
     
     HyperParameters = edict()
     HyperParameters.groups =['CN_AD'] 
-    HyperParameters.features= [100,200,300,400,500,750,1000,1250,1500]
+    HyperParameters.features= [100,200,300,400,500,750,1000,1500]
     HyperParameters.pruning = ['prune','no_prune']
     HyperParameters.params = [HyperParameters.features, HyperParameters.pruning,HyperParameters.groups]  
     if args.tuning == 'sweep':
