@@ -55,7 +55,7 @@ def train_ADNI(groups='CN_AD',features=1000,n_estimators=950):
     cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=SEED)
     fig, ax = plt.subplots()
     X, y = df, y
-    df_to_save = df
+    df_to_save = df.copy()
     df_to_save['DIAG'] = y
     df_to_save['PTID'] = ptid
     df_to_save.to_csv(os.path.join(results_path,'data_for_best.csv'))
