@@ -222,7 +222,7 @@ if  __name__ == '__main__':
     HyperParameters.groups = ['CN_AD']  
     HyperParameters.classifier = ['xgb']
     HyperParameters.smote_flag = ['correct'] 
-    HyperParameters.features= [20,30,40,50]
+    HyperParameters.features= [100,200,300,400,500]
     HyperParameters.pruning = ['prune','no_prune']
     HyperParameters.params = [HyperParameters.data_type,HyperParameters.groups,HyperParameters.classifier,HyperParameters.smote_flag,HyperParameters.features,HyperParameters.pruning]  
     if args.tuning == 'sweep':
