@@ -143,8 +143,10 @@ def run_ADNI(data_type='combined',groups='CN_AD',features=1000,feature_selection
 
     top_snps = list(pd.read_csv(os.path.join(data_path,'data','top2000_snps.csv'),low_memory=False)['top_snps'])[:features]
     df_gwas = pd.read_csv(os.path.join(data_path,'data','common_gwas.csv'),low_memory=False)
+    diag_map = {0:'CN',1:'AD'}
+    df_gwas['DIAG'] = [diag_map[i] for i in list(df_gwas.DIAG)]
     cat_cols = [i for i in df_gwas.columns if 'rs' in i]  #Categorical features
-    num_cols = ['AGE','EDU','DIAG']
+    num_cols = ['PTID','AGE','EDU','DIAG']
     top_feats = [feat for feat in cat_cols if '_'.join(feat.split('_')[:2]) in top_snps] + num_cols
     df_gwas = df_gwas.loc[:,top_feats]
     
@@ -162,6 +164,7 @@ def run_ADNI(data_type='combined',groups='CN_AD',features=1000,feature_selection
         df = df.drop(columns=['PTID','DIAG']).reset_index(drop=True) #Patient ID and DIAG not needed 
         smote = SMOTE(sampling_strategy=SAMPLING, k_neighbors=7,random_state=SEED)
         
+        
     if data_type == 'combined':
         df = pd.merge(df_gwas,df_expr,how='left', on=['PTID','AGE','EDU','DIAG']) #EARLY FUSION
         y = df.DIAG
@@ -172,9 +175,9 @@ def run_ADNI(data_type='combined',groups='CN_AD',features=1000,feature_selection
 
     print("Shape of final data BEFORE FEATURE SELECTION")
     print(df.shape, y.shape)
+    y = prepare_targets(y)
     print("Label distribution")
     print(Counter(y))
-    y = prepare_targets(y)
     STEP = int(df.shape[1]/20)
     fname = '_'.join([data_type,feature_selection,classifier,str(features),pruning,smote_flag])
     grid_search,summary = train_val(df, y, data_type = data_type,feature_selection=feature_selection,smote=smote,classifier = classifier,smote_flag=smote_flag, sampling=SAMPLING, pruning=pruning,step=STEP,seed=SEED)
@@ -226,7 +229,8 @@ if  __name__ == '__main__':
         print(acc,auc)
 
     HyperParameters = edict()
-    HyperParameters.data_type = ['expr','gwas','combined']
+    #HyperParameters.data_type = ['expr','gwas','combined']
+    HyperParameters.data_type = ['gwas','combined']
     HyperParameters.groups = ['CN_AD']  
     HyperParameters.classifier = ['xgb']
     HyperParameters.smote_flag = ['correct'] 
