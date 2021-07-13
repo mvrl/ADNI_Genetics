@@ -12,6 +12,7 @@ def prepare_targets(y,groups='CN_AD'):
     class1 = groups.split('_')[0]
     class2 = groups.split('_')[1]
     count_dict = Counter(y)
+    
     class1_count = count_dict[class1]
     class2_count = count_dict[class2]
     ## Label minority class = 1 and majority class = 0

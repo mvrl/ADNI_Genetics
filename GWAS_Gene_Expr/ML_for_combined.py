@@ -230,7 +230,7 @@ if  __name__ == '__main__':
 
     HyperParameters = edict()
     #HyperParameters.data_type = ['expr','gwas','combined']
-    HyperParameters.data_type = ['gwas','combined']
+    HyperParameters.data_type = ['expr','gwas','combined']
     HyperParameters.groups = ['CN_AD']  
     HyperParameters.classifier = ['xgb']
     HyperParameters.smote_flag = ['correct'] 
