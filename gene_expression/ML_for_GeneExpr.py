@@ -45,7 +45,7 @@ def train_val(X_train, y_train, classifier = 'xgb',smote='correct', sampling=0.7
         X_train, y_train = smote.fit_resample(X_train, y_train)
         pipeline = Pipeline(steps = [['featureSelection',rfecv],['classifier', clf]])
     
-    elif smote == 'correct' and pruning == 'no_prune':
+    elif pruning == 'no_prune':
         pipeline = imbpipeline(steps = [['smote', SMOTE(sampling_strategy=sampling,k_neighbors=7,random_state=seed)],
                                         ['classifier', clf]])
                                             
