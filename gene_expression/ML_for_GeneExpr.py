@@ -4,6 +4,7 @@ import pandas as pd
 from collections import Counter
 from sklearn.model_selection import RepeatedStratifiedKFold,GridSearchCV, StratifiedKFold
 from sklearn.feature_selection import RFECV
+from sklearn.feature_selection import SelectFromModel
 from sklearn.ensemble import GradientBoostingClassifier
 import xgboost as xgb
 from imblearn.over_sampling import SMOTE, SMOTENC
@@ -20,10 +21,10 @@ warnings.filterwarnings("ignore")
 overall_groups = ['CN_AD','CN_EMCI','CN_LMCI','EMCI_LMCI','EMCI_AD','LMCI_AD']
 SEED = 11
 root_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/'
-RESULTS = 'results'
+RESULTS = 'results2'
 results_path=os.path.join(root_path,RESULTS)
 ############################################################################################
-def train_val(X_train, y_train, classifier = 'xgb',smote='correct', sampling=0.7, pruning='prune',step=50,seed=11):
+def train_val(X_train, y_train, feature_selection, classifier = 'xgb',smote='correct', sampling=0.7, pruning='prune',step=50,seed=11):
     
     if classifier == 'xgb':
         est = xgb.XGBClassifier(n_estimators=2*X_train.shape[1],max_depth=6,eval_metric='logloss',use_label_encoder=False) #eval_metric='logloss' #fixed error warning so!
@@ -34,16 +35,19 @@ def train_val(X_train, y_train, classifier = 'xgb',smote='correct', sampling=0.7
         clf = GradientBoostingClassifier()
         param_grid = {'classifier__n_estimators':range(10,2*X_train.shape[1],50)}
           
-    rfecv = RFECV(estimator=est,step=step,scoring='balanced_accuracy')
+    if feature_selection == 'RFECV':
+        feat_sel = RFECV(estimator=est,step=step,scoring='balanced_accuracy')
+    elif feature_selection == 'fromModel':
+        feat_sel = SelectFromModel(estimator=est)
     
     if smote == 'correct' and pruning == 'prune':
-        pipeline = imbpipeline(steps = [['featureSelection',rfecv],
-                                        ['smote', SMOTE(sampling_strategy=sampling,k_neighbors=7,random_state=seed)],
+        pipeline = imbpipeline(steps = [['smote', SMOTE(sampling_strategy=sampling,k_neighbors=7,random_state=seed)],
+                                        ['featureSelection',feat_sel],
                                         ['classifier', clf]])
     elif smote == 'incorrect' and pruning == 'prune':
         smote = SMOTE(sampling_strategy=sampling,k_neighbors=7,random_state=seed)
         X_train, y_train = smote.fit_resample(X_train, y_train)
-        pipeline = Pipeline(steps = [['featureSelection',rfecv],['classifier', clf]])
+        pipeline = Pipeline(steps = [['featureSelection',feat_sel],['classifier', clf]])
     
     elif pruning == 'no_prune':
         pipeline = imbpipeline(steps = [['smote', SMOTE(sampling_strategy=sampling,k_neighbors=7,random_state=seed)],
@@ -83,8 +87,15 @@ def train_val(X_train, y_train, classifier = 'xgb',smote='correct', sampling=0.7
 
         X_test_fold = np.array(X_train.iloc[test])
         y_test_fold = np.array(y_train[test])
+
+        oversample = SMOTE(sampling_strategy=sampling, k_neighbors=7,random_state=seed)
+        X_train_fold, y_train_fold = oversample.fit_resample(X_train_fold, y_train_fold)
+
         if pruning == 'prune':
-            selector_fold = pipeline.named_steps['featureSelection'].fit(X_train_fold, y_train_fold).support_
+            if feature_selection == 'RFECV':
+                selector_fold = pipeline.named_steps['featureSelection'].fit(X_train_fold, y_train_fold).support_ 
+            elif feature_selection == 'fromModel':
+                selector_fold = pipeline.named_steps['featureSelection'].fit(X_train_fold, y_train_fold).get_support()
             X_train_fold = X_train_fold[:,selector_fold]
             X_test_fold = X_test_fold[:,selector_fold]
         else:
@@ -92,8 +103,7 @@ def train_val(X_train, y_train, classifier = 'xgb',smote='correct', sampling=0.7
             X_train_fold = X_train_fold[:,selector_fold]
             X_test_fold = X_test_fold[:,selector_fold]
 
-        oversample = SMOTE(sampling_strategy=sampling, k_neighbors=7,random_state=seed)
-        X_train_fold, y_train_fold = oversample.fit_resample(X_train_fold, y_train_fold)
+        
         probas_ = model.fit(X_train_fold, y_train_fold).predict_proba(X_test_fold)
         y_pred = model.predict(X_test_fold)
         acc = balanced_accuracy_score(y_test_fold, y_pred)
@@ -111,19 +121,19 @@ def train_val(X_train, y_train, classifier = 'xgb',smote='correct', sampling=0.7
 
     return grid_search,summary
 
-def run_ADNI(groups='CN_AD',features=1000,classifier = 'xgb',smote='correct',pruning='prune'):
+def run_ADNI(groups='CN_AD',features=1000,feature_selection='RFECV',classifier = 'xgb',smote='correct',pruning='prune'):
     N = features
     STEP = int(features/20)
     print("EXPERIMENT LOG FOR:",groups)
     print('\n')
     root_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/'
-    fname = '_'.join([groups,classifier,str(features),pruning,smote])
+    fname = '_'.join([groups,feature_selection,classifier,str(features),pruning,smote])
 
     df, y, SAMPLING = GeneExpr_data_prep(groups,root_path,features)
     print("Shape of final data BEFORE FEATURE SELECTION")
     print(df.shape, y.shape) 
     original_cols = list(df.columns)
-    grid_search,summary = train_val(df, y, classifier = classifier,smote=smote, sampling=SAMPLING, pruning=pruning,step=STEP,seed=SEED)
+    grid_search,summary = train_val(df, y, feature_selection=feature_selection,classifier = classifier,smote=smote, sampling=SAMPLING, pruning=pruning,step=STEP,seed=SEED)
     results = np.array(summary['results'])
     aucs = results[:,1]
     accs = results[:,0]
@@ -149,6 +159,7 @@ if  __name__ == '__main__':
     parser.add_argument('--classifier', type=str, help='Classifier Options:[xgb,GradientBoosting]', default='xgb')
     parser.add_argument('--smote', type=str, help='Classifier Options:[correct,incorrect]', default='correct')
     parser.add_argument('--features', type=int, help='Number of features to be used', default=100)
+    parser.add_argument('--feature_selection', type=str, help='Type of feature selection. Options:[RFECV,fromModel]', default='fromModel')
     parser.add_argument('--pruning', type=str, help='Do pruning of features or not. Options:[prune,no_prune]', default='prune')
     parser.add_argument('--groups', type=str, help='binary classes to be classified ', default='CN_AD')
     parser.add_argument('--tuning', type=str, help='To perform hyperparameter sweep or not. Options:[sweep, no_sweep]', default='no_sweep')    
@@ -157,6 +168,7 @@ if  __name__ == '__main__':
     if args.tuning == 'no_sweep':
         acc, auc, label_dist, avg_no_sel_features, best_params = run_ADNI(
                 classifier = args.classifier,
+                feature_selection = args.feature_selection,
                 smote = args.smote,
                 features=args.features,
                 pruning=args.pruning,
@@ -171,9 +183,10 @@ if  __name__ == '__main__':
     HyperParameters.smote = ['correct'] 
     HyperParameters.features= [100,200,300,400,500]
     HyperParameters.pruning = ['prune','no_prune']
-    HyperParameters.params = [HyperParameters.groups,HyperParameters.classifier,HyperParameters.smote,HyperParameters.features,HyperParameters.pruning]  
+    HyperParameters.feature_selection = ['fromModel']#,'RFECV']
+    HyperParameters.params = [HyperParameters.groups,HyperParameters.classifier,HyperParameters.smote,HyperParameters.features,HyperParameters.pruning,HyperParameters.feature_selection]  
     if args.tuning == 'sweep':
-        final_result = pd.DataFrame(columns = ['Group', 'Label_distribution','classifier','smote','initial_feats','Pruning','final_feats','best_params','Macro_ACC','Macro_AUC'])
+        final_result = pd.DataFrame(columns = ['Group', 'Label_distribution','classifier','smote','initial_feats','Pruning','feature_selection','final_feats','best_params','Macro_ACC','Macro_AUC'])
         params = list(itertools.product(*HyperParameters.params))
         for hp in params:
             print("For parameters:",hp)
@@ -181,14 +194,15 @@ if  __name__ == '__main__':
                 groups = hp[0],  
                 classifier = hp[1],
                 smote = hp[2],
-                features=hp[3],
-                pruning=hp[4]        
+                features=hp[3],         
+                pruning=hp[4],
+                feature_selection = hp[5]       
                )
             print(acc, auc)
             print('\n')
 
             final_result = final_result.append({'Group':hp[0], 'Label_distribution':label_dist,'classifier':hp[1],'smote':hp[2],
-                                                'initial_feats':hp[3],'Pruning':hp[4],'final_feats':avg_no_sel_features,'best_params':best_params,
+                                                'initial_feats':hp[3],'Pruning':hp[4],'feature_selection':hp[5],'final_feats':avg_no_sel_features,'best_params':best_params,
                                                 'Macro_ACC':acc,'Macro_AUC':auc},
                                                 ignore_index = True)
         

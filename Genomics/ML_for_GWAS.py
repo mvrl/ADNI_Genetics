@@ -2,7 +2,7 @@ from utilities import save_results,importance_extractor
 import os
 import pandas as pd
 from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedKFold, GridSearchCV
-from sklearn.feature_selection import RFECV
+from sklearn.feature_selection import RFECV, SelectFromModel
 from sklearn.ensemble import GradientBoostingClassifier
 import xgboost as xgb
 from imblearn.over_sampling import SMOTE, SMOTENC
@@ -20,12 +20,12 @@ warnings.filterwarnings("ignore")
 
 SEED = 11
 np.random.seed(SEED)
-RESULTS = 'results' # Name of results folder, 'results' for overall grid search, results_test1, results_test2, results_test3 for 3 rounds of best model and features.
+RESULTS = 'results2' # Name of results folder, 'results' for overall grid search, results_test1, results_test2, results_test3 for 3 rounds of best model and features.
 data_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/Genomics/'
 results_path = os.path.join(data_path,RESULTS)
 ##########################################################################################################
 
-def train_val(X_train, y_train, cat_columns_index,classifier = 'xgb',smote='correct', sampling=0.7, pruning='prune',step=50,seed=11):
+def train_val(X_train, y_train, feature_selection,cat_columns_index,classifier = 'xgb',smote='correct', sampling=0.7, pruning='prune',step=50,seed=11):
     
     if classifier == 'xgb':
         est = xgb.XGBClassifier(n_estimators=2*X_train.shape[1],max_depth=6,eval_metric='logloss',use_label_encoder=False) #eval_metric='logloss' #fixed error warning so!
@@ -36,16 +36,19 @@ def train_val(X_train, y_train, cat_columns_index,classifier = 'xgb',smote='corr
         clf = GradientBoostingClassifier()
         param_grid = {'classifier__n_estimators':range(10,2*X_train.shape[1],50)}
           
-    rfecv = RFECV(estimator=est,step=step,scoring='balanced_accuracy')
+    if feature_selection == 'RFECV':
+        feat_sel = RFECV(estimator=est,step=step,scoring='balanced_accuracy')
+    elif feature_selection == 'fromModel':
+        feat_sel = SelectFromModel(estimator=est)
     
     if smote == 'correct' and pruning == 'prune':
         pipeline = imbpipeline(steps = [['smote', SMOTENC(sampling_strategy=sampling,k_neighbors=7,random_state=seed,categorical_features = cat_columns_index)],
-                                        ['featureSelection',rfecv],
+                                        ['featureSelection',feat_sel],
                                         ['classifier', clf]])
     elif smote == 'incorrect' and pruning == 'prune':
         smote = SMOTENC(sampling_strategy=sampling,k_neighbors=7,random_state=seed,categorical_features = cat_columns_index)
         X_train, y_train = smote.fit_resample(X_train, y_train)
-        pipeline = Pipeline(steps = [['featureSelection',rfecv],['classifier', clf]])
+        pipeline = Pipeline(steps = [['featureSelection',feat_sel],['classifier', clf]])
     
     elif pruning == 'no_prune':
         pipeline = imbpipeline(steps = [['smote', SMOTENC(sampling_strategy=sampling,k_neighbors=7,random_state=seed,categorical_features = cat_columns_index)],
@@ -91,7 +94,10 @@ def train_val(X_train, y_train, cat_columns_index,classifier = 'xgb',smote='corr
         X_train_fold, y_train_fold = oversample.fit_resample(X_train_fold, y_train_fold)
         
         if pruning == 'prune':
-            selector_fold = pipeline.named_steps['featureSelection'].fit(X_train_fold, y_train_fold).support_
+            if feature_selection == 'RFECV':
+                selector_fold = pipeline.named_steps['featureSelection'].fit(X_train_fold, y_train_fold).support_ 
+            elif feature_selection == 'fromModel':
+                selector_fold = pipeline.named_steps['featureSelection'].fit(X_train_fold, y_train_fold).get_support()
         else:
             selector_fold = [True for i in range(len(X_train.columns))] #Take all features no RFECV
 
@@ -121,7 +127,7 @@ def train_val(X_train, y_train, cat_columns_index,classifier = 'xgb',smote='corr
 
     return grid_search,summary
 ###############################################################################################################################################################################################################    
-def run_ADNI(groups='CN_AD',features=1000,classifier = 'xgb',smote='correct',pruning='prune'):
+def run_ADNI(groups='CN_AD',features=1000,feature_selection='RFECV',classifier = 'xgb',smote='correct',pruning='prune'):
     SAMPLING = 0.7
     groups = groups
     print("EXPERIMENT LOG FOR:",groups)
@@ -142,12 +148,12 @@ def run_ADNI(groups='CN_AD',features=1000,classifier = 'xgb',smote='correct',pru
     print("Label distribution")
     print(Counter(y))
     STEP = int(df.shape[1]/20)
-    fname = '_'.join([classifier,str(features),pruning,smote])
+    fname = '_'.join([classifier,feature_selection,str(features),pruning,smote])
     
     original_cols = list(df.columns)
     cat_columns = [i for i in original_cols if i not in num_cols]  #Categorical features
     cat_columns_index = [i for i in range(len(df.columns)) if df.columns[i] in cat_columns]
-    grid_search,summary = train_val(df, y, classifier = classifier,smote=smote, sampling=SAMPLING, pruning=pruning,step=STEP,seed=SEED, cat_columns_index=cat_columns_index)
+    grid_search,summary = train_val(df, y, feature_selection=feature_selection,classifier = classifier,smote=smote, sampling=SAMPLING, pruning=pruning,step=STEP,seed=SEED, cat_columns_index=cat_columns_index)
     results = np.array(summary['results'])
     
     aucs = results[:,1]
@@ -175,6 +181,7 @@ if  __name__ == '__main__':
     parser.add_argument('--classifier', type=str, help='Classifier Options:[xgb,GradientBoosting]', default='xgb')
     parser.add_argument('--smote', type=str, help='Classifier Options:[correct,incorrect]', default='correct')
     parser.add_argument('--features', type=int, help='Number of features to be used', default=100)
+    parser.add_argument('--feature_selection', type=str, help='Type of feature selection. Options:[RFECV,fromModel]', default='fromModel')
     parser.add_argument('--pruning', type=str, help='Do pruning of features or not. Options:[prune,no_prune]', default='prune')
     parser.add_argument('--groups', type=str, help='binary classes to be classified ', default='CN_AD')
     parser.add_argument('--tuning', type=str, help='To perform hyperparameter sweep or not. Options:[sweep, no_sweep]', default='no_sweep')    
@@ -183,6 +190,7 @@ if  __name__ == '__main__':
     if args.tuning == 'no_sweep':
         acc, auc, label_dist, avg_no_sel_features, best_params = run_ADNI(
                 classifier = args.classifier,
+                feature_selection = args.feature_selection,
                 smote = args.smote,
                 features=args.features,
                 pruning=args.pruning,
@@ -197,9 +205,10 @@ if  __name__ == '__main__':
     HyperParameters.smote = ['correct'] 
     HyperParameters.features= [100,200,300,500,750,1000]
     HyperParameters.pruning = ['prune','no_prune']
-    HyperParameters.params = [HyperParameters.groups,HyperParameters.classifier,HyperParameters.smote,HyperParameters.features,HyperParameters.pruning]  
+    HyperParameters.feature_selection = ['fromModel']#,'RFECV']
+    HyperParameters.params = [HyperParameters.groups,HyperParameters.classifier,HyperParameters.smote,HyperParameters.features,HyperParameters.pruning,HyperParameters.feature_selection]  
     if args.tuning == 'sweep':
-        final_result = pd.DataFrame(columns = ['Group', 'Label_distribution','classifier','smote','initial_feats','Pruning','final_feats','best_params','Macro_ACC','Macro_AUC'])
+        final_result = pd.DataFrame(columns = ['Group', 'Label_distribution','classifier','smote','initial_feats','Pruning','feature_selection','final_feats','best_params','Macro_ACC','Macro_AUC'])
         params = list(itertools.product(*HyperParameters.params))
         for hp in params:
             print("For parameters:",hp)
@@ -208,13 +217,14 @@ if  __name__ == '__main__':
                 classifier = hp[1],
                 smote = hp[2],
                 features=hp[3],
-                pruning=hp[4]        
+                pruning=hp[4],
+                feature_selection = hp[5]        
                )
             print(acc, auc)
             print('\n')
 
             final_result = final_result.append({'Group':hp[0], 'Label_distribution':label_dist,'classifier':hp[1],'smote':hp[2],
-                                                'initial_feats':hp[3],'Pruning':hp[4],'final_feats':avg_no_sel_features,'best_params':best_params,
+                                                'initial_feats':hp[3],'Pruning':hp[4],'feature_selection':hp[5],'final_feats':avg_no_sel_features,'best_params':best_params,
                                                 'Macro_ACC':acc,'Macro_AUC':auc},
                                                 ignore_index = True)
         
