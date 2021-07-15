@@ -4,14 +4,14 @@
 import os
 import re
 
-def low_call_rate_pruning(FOLD):
+def low_call_rate_pruning(FOLD,train_test_flag):
 
     diagnosis='DX_bl' # DX or DX_bl from ADNIMERGE.csv column
     control='CN'
     delimiter='_'
     case='AD'
     analysis=control+delimiter+case
-    root_path="/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/Genomics/data/GWAS/CN_AD/cv_folds/fold"+FOLD+"/train/"
+    root_path="/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/Genomics/data/GWAS/CN_AD/cv_folds/fold"+FOLD+"/"+train_test_flag+"/"
     file1 = os.path.join(root_path,'QualityControl','pihat_min0.2_in_founders.genome.fam1')
     file2 = os.path.join(root_path,'QualityControl','pihat_min0.2_in_founders.genome.fam2')
 
@@ -38,9 +38,10 @@ if  __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--FOLD', type=str, help='which training fold to do GWAS for', default='0')
+    parser.add_argument('--train_test_flag', type=str, help='for train fold or test fold', default='train')
     args = parser.parse_args()
 
-    low_call_rate_pruning(args.FOLD)
+    low_call_rate_pruning(args.FOLD,args.train_test_flag)
 
 
 

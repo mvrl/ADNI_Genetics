@@ -18,8 +18,9 @@ hwe_th2=1e-10
 pihat_th=0.2
 
 FOLD="4" #Which training fold to run GWAS on!
+train_test="test"
 ##Paths
-root_path="/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/Genomics/data/GWAS/CN_AD/cv_folds/fold"$FOLD"/train/"
+root_path="/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/Genomics/data/GWAS/CN_AD/cv_folds/fold"$FOLD"/"$train_test"/"
 work_path=$root_path"QualityControl/"
 mkdir -p $work_path
 data_path=$root_path"GWAS_1_2_3_clean_"$analysis
@@ -257,7 +258,7 @@ plink --bfile "GWAS_1_2_3_clean_"$analysis"11" --pheno $cov_path --pheno-name DI
 #SAME THING IN CODE:
 awk '{ print $1,$2 }' pihat_min0.2_in_founders.genome > pihat_min0.2_in_founders.genome.fam1
 awk '{ print $3,$4 }' pihat_min0.2_in_founders.genome > pihat_min0.2_in_founders.genome.fam2
-python $code_path"low_callrate_pruning.py" --FOLD $FOLD
+python $code_path"low_callrate_pruning.py" --FOLD $FOLD --train_test_flag $train_test
 
 # Delete the individuals with the lowest call rate in 'related' pairs with a pihat > 0.2 
 plink --bfile "GWAS_1_2_3_clean_"$analysis"11" --pheno $cov_path --pheno-name DIAG --remove 0.2_low_call_rate_pihat.txt --make-bed --out "GWAS_1_2_3_clean_"$analysis"12" --noweb
