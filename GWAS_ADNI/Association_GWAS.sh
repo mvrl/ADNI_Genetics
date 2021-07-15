@@ -9,20 +9,21 @@ analysis=$control$delimiter$case
 
 association='logistic' # 'logistic' for binary traits, 'linear' for continuous like MMSE
 ##Paths
-root_path='/home/skh259/LinLab/LinLab/ADNI/GWAS_ADNI/'
-work_path=$root_path$analysis"/Assoc/"
-data_path=$root_path$analysis"/data/GWAS_1_2_3_clean_"$analysis"12"
-cov_path=$root_path$analysis"/data/final_cov.txt"
-final_path=$root_path$analysis"/data/"
+FOLD="4"
+root_path="/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/Genomics/data/GWAS/CN_AD/cv_folds/fold"$FOLD"/train/"
+work_path=$root_path"Assoc/"
+mkdir -p $work_path
+data_path=$root_path"QualityControl/GWAS_1_2_3_clean_"$analysis"12"
+cov_path=$root_path"final_cov.txt"
+final_path=$work_path
 
 #Utility Scripts path
-Assoc_path=$root_path"GWA_tutorial/3_Association_GWAS/"
+code_path="/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/GWAS_ADNI/"
+Assoc_path=$code_path"GWA_tutorial/3_Association_GWAS/"
 cd $work_path
 
 ###########################################################
 ### Association analyses ###
-
-cp $final_path"*" .
 
 # Association
 # We will be using 5 principal components as covariates in this association analysis. We use the MDS components calculated from the previous tutorial: final_cov.txt.

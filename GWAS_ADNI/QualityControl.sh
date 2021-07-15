@@ -17,14 +17,17 @@ hwe_th1=1e-6
 hwe_th2=1e-10
 pihat_th=0.2
 
+FOLD="4" #Which training fold to run GWAS on!
 ##Paths
-root_path='/home/skh259/LinLab/LinLab/ADNI/GWAS_ADNI/'
-work_path=$root_path$analysis"/QualityControl/"
-data_path=$root_path$analysis"/data/GWAS_1_2_3_clean_"$analysis
-cov_path=$root_path$analysis"/data/cov_pheno.txt"
-final_path=$root_path$analysis"/data/"
+root_path="/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/Genomics/data/GWAS/CN_AD/cv_folds/fold"$FOLD"/train/"
+work_path=$root_path"QualityControl/"
+mkdir -p $work_path
+data_path=$root_path"GWAS_1_2_3_clean_"$analysis
+cov_path=$root_path"cov_pheno.txt"
+final_path=$work_path
+code_path="/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/GWAS_ADNI/"
 #Utility Scripts path
-QC_path=$root_path"GWA_tutorial/1_QC_GWAS"
+QC_path=$code_path"GWA_tutorial/1_QC_GWAS"
 
 # Change directory to a folder on your UNIX device containing all files from GWAS_1_2_3_clean_$analysis
 cd $work_path
@@ -254,12 +257,12 @@ plink --bfile "GWAS_1_2_3_clean_"$analysis"11" --pheno $cov_path --pheno-name DI
 #SAME THING IN CODE:
 awk '{ print $1,$2 }' pihat_min0.2_in_founders.genome > pihat_min0.2_in_founders.genome.fam1
 awk '{ print $3,$4 }' pihat_min0.2_in_founders.genome > pihat_min0.2_in_founders.genome.fam2
-python $root_path"low_callrate_pruning.py" 
+python $code_path"low_callrate_pruning.py" --FOLD $FOLD
 
 # Delete the individuals with the lowest call rate in 'related' pairs with a pihat > 0.2 
 plink --bfile "GWAS_1_2_3_clean_"$analysis"11" --pheno $cov_path --pheno-name DIAG --remove 0.2_low_call_rate_pihat.txt --make-bed --out "GWAS_1_2_3_clean_"$analysis"12" --noweb
 
-cp "GWAS_1_2_3_clean_"$analysis"12".* $final_path
+#cp "GWAS_1_2_3_clean_"$analysis"12".* $final_path
 
 ################################################################################################################################
 

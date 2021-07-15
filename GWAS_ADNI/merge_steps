@@ -1,17 +1,23 @@
 #First Merge the GWAS files into one
 
-plink --bfile /home/skh259/LinLab/LinLab/ADNI/GWAS/ADNI_1_GWAS_Plink/ADNI_cluster_01_forward_757LONI --bmerge /home/skh259/LinLab/LinLab/ADNI/GWAS/ADNI_GO_2_OmniExpress/GWAS_1_2_3_clean.bed /home/skh259/LinLab/LinLab/ADNI/GWAS/ADNI_GO_2_OmniExpress/GWAS_1_2_3_clean.bim /home/skh259/LinLab/LinLab/ADNI/GWAS/ADNI_GO_2_OmniExpress/GWAS_1_2_3_clean.fam --make-bed --out GWAS_1_2 --noweb
+plink --bfile /home/skh259/LinLab/LinLab/ADNI/GWAS/ADNI_1_GWAS_Plink/ADNI_cluster_01_forward_757LONI --bmerge /home/skh259/LinLab/LinLab/ADNI/GWAS/ADNI_GO_2_OmniExpress/ADNI_GO_2_Forward_Bin.bed /home/skh259/LinLab/LinLab/ADNI/GWAS/ADNI_GO_2_OmniExpress/ADNI_GO_2_Forward_Bin.bim /home/skh259/LinLab/LinLab/ADNI/GWAS/ADNI_GO_2_OmniExpress/ADNI_GO_2_Forward_Bin.fam --make-bed --out GWAS_1_2 --noweb
 
 plink --bfile GWAS_1_2 --bmerge /home/skh259/LinLab/LinLab/ADNI/GWAS/GWAS_ADNI3/ADNI3_PLINK_Final.bed /home/skh259/LinLab/LinLab/ADNI/GWAS/GWAS_ADNI3/ADNI3_PLINK_Final.bim /home/skh259/LinLab/LinLab/ADNI/GWAS/GWAS_ADNI3/ADNI3_PLINK_Final.fam --make-bed --out GWAS_1_2_3 --noweb
 
 #This generated 
 #'ERROR: Stopping due to mis-matching SNPs -- check +/− strand?’
 
-#Inspecting GWAS_1_2_3.missnp we can see there are only 6 snps causing this so we can ignore these in both the files
+#Inspecting GWAS_1_2_3-merge.missnp we can see there are only 6 snps causing this so we can ignore these in both the files
+rs16910526
+rs17107315
+rs17602729
+rs2274083
+rs35067814
+rs3825942
 
-plink --bfile GWAS_1_2 --exclude GWAS_1_2_3.missnp --make-bed --out GWAS_1_2_clean --noweb
+plink --bfile GWAS_1_2 --exclude GWAS_1_2_3-merge.missnp --make-bed --out GWAS_1_2_clean --noweb
 
-plink --bfile /home/skh259/LinLab/LinLab/ADNI/GWAS/GWAS_ADNI3/ADNI3_PLINK_Final --exclude GWAS_1_2_3.missnp --make-bed --out GWAS_3_clean --noweb
+plink --bfile /home/skh259/LinLab/LinLab/ADNI/GWAS/GWAS_ADNI3/ADNI3_PLINK_Final --exclude GWAS_1_2_3-merge.missnp --make-bed --out GWAS_3_clean --noweb
 
 plink --bfile GWAS_1_2_clean --bmerge GWAS_3_clean.bed GWAS_3_clean.bim GWAS_3_clean.fam --make-bed --out GWAS_1_2_3_clean --noweb
 
