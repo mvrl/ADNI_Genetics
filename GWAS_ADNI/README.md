@@ -9,8 +9,7 @@ For the details it is recommended to read the accompanying paper "A tutorial on 
 1. python3 data_prep.py
 2. ./QualityControl.sh
 3. ./PoplnStrat.sh
-4. python3 cov_creator.py
-5. ./Association_GWAS.sh
+4. ./Association_GWAS.sh
 
 ## Generate Manhattan and QQ plots.
 Open R studio with R version >4.0
