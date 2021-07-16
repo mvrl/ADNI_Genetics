@@ -43,3 +43,4 @@ FOLDS = 5
 df = folds_split(subjects,diag,groups,FOLDS)
 df.to_csv(os.path.join(data_path,'CV_folds.csv'))
 
+
