@@ -16,98 +16,84 @@ from sklearn.pipeline import Pipeline
 from easydict import EasyDict as edict
 import itertools
 import warnings
-from scipy import stats
-from scipy.stats import ttest_ind
-import statsmodels.stats.multitest as multi
 warnings.filterwarnings("ignore")
 
 overall_groups = ['CN_AD','CN_EMCI','CN_LMCI','EMCI_LMCI','EMCI_AD','LMCI_AD']
 SEED = 11
-FOLD = 5
 root_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/'
-CV_path = '/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/gene_expression/data'
-RESULTS = 'results'
+RESULTS = 'results2'
 results_path=os.path.join(root_path,RESULTS)
 ############################################################################################
-def train_val(groups,df, features, feature_selection, classifier = 'xgb',smote='correct', sampling=0.7, pruning='prune',step=50,seed=11):
-
-    N = features
-    n_estimators = range(10,2*features,50)
-    max_depths = range(2,10,2)
-    SAMPLING = 1.0
-
-    HyperParameters = edict()
-    HyperParameters.n_estimators = range(10,2*features,50) 
-    HyperParameters.max_depths = range(2,10,2)
-
-    if classifier  == 'xgb':
-        HyperParameters.params = [HyperParameters.n_estimators,HyperParameters.max_depths]  
-    elif classifier == 'GradientBoosting':
-        HyperParameters.params = [HyperParameters.n_estimators]
+def train_val(X_train, y_train, feature_selection, classifier = 'xgb',smote='correct', sampling=0.7, pruning='prune',step=50,seed=11):
     
-    if groups == 'CN_AD':
-        SAMPLING = 0.7 
+    if classifier == 'xgb':
+        est = xgb.XGBClassifier(n_estimators=2*X_train.shape[1],max_depth=6,eval_metric='logloss',use_label_encoder=False) #eval_metric='logloss' #fixed error warning so!
+        clf = xgb.XGBClassifier(eval_metric='logloss',use_label_encoder=False)
+        param_grid = {'classifier__n_estimators':range(10,2*X_train.shape[1],50),'classifier__max_depth':range(2,10,2)}
+    if classifier == 'GradientBoosting':
+        est = GradientBoostingClassifier(n_estimators=2*X_train.shape[1])
+        clf = GradientBoostingClassifier()
+        param_grid = {'classifier__n_estimators':range(10,2*X_train.shape[1],50)}
+          
+    if feature_selection == 'RFECV':
+        feat_sel = RFECV(estimator=est,step=step,scoring='balanced_accuracy')
+    elif feature_selection == 'fromModel':
+        feat_sel = SelectFromModel(estimator=est)
     
-    params = list(itertools.product(*HyperParameters.params))
-    for hp in params:
-        fname = '_'.join([groups,classifier,pruning,feature_selection,smote])
-        print(fname)
-        print('for parameters:',hp)
-
-        ############################### T-test based feature selection ######################################################
-
-        if classifier  == 'xgb':
-            n_estimators = hp[0]
-            max_depth = hp[1]
-            est = xgb.XGBClassifier(n_estimators=n_estimators,max_depth=max_depth,eval_metric='logloss',use_label_encoder=False)
-
-        elif classifier == 'GradientBoosting':
-            n_estimators = hp[0]
-            est = GradientBoostingClassifier(n_estimators=n_estimators)
-
-        if feature_selection == 'RFECV':
-            feat_sel = RFECV(estimator=est,step=step,scoring='balanced_accuracy')
-        elif feature_selection == 'fromModel':
-            feat_sel = SelectFromModel(estimator=est)
+    if smote == 'correct' and pruning == 'prune':
+        pipeline = imbpipeline(steps = [['smote', SMOTE(sampling_strategy=sampling,k_neighbors=7,random_state=seed)],
+                                        ['featureSelection',feat_sel],
+                                        ['classifier', clf]])
+    elif smote == 'incorrect' and pruning == 'prune':
+        smote = SMOTE(sampling_strategy=sampling,k_neighbors=7,random_state=seed)
+        X_train, y_train = smote.fit_resample(X_train, y_train)
+        pipeline = Pipeline(steps = [['featureSelection',feat_sel],['classifier', clf]])
     
-        mean_fpr = np.linspace(0, 1, 100)
-        selector = []
-        results = []
-        tprs = []
-        aucs = []
-        acc = []
-        imp = []
-        summary = dict()
+    elif pruning == 'no_prune':
+        pipeline = imbpipeline(steps = [['smote', SMOTE(sampling_strategy=sampling,k_neighbors=7,random_state=seed)],
+                                        ['classifier', clf]])
+                                            
+    stratified_kfold = StratifiedKFold(n_splits=5,shuffle=True,random_state=seed)       
+    grid_search = GridSearchCV(estimator=pipeline,
+                                param_grid=param_grid,
+                                scoring='balanced_accuracy',
+                                cv=stratified_kfold,
+                                n_jobs=-1,
+                                error_score="raise")
+    
+    grid_search.fit(X_train, y_train)
+    cv_score = grid_search.best_score_
+    print(cv_score)
+    print(grid_search.best_params_)
+
+  # Refit to data using the best parameters
+    if classifier == 'xgb':
+        model = xgb.XGBClassifier(n_estimators=grid_search.best_params_['classifier__n_estimators'],max_depth=grid_search.best_params_['classifier__max_depth'],eval_metric='logloss',use_label_encoder=False)
+    if classifier == 'GradientBoosting':
+        model = GradientBoostingClassifier(n_estimators=grid_search.best_params_['classifier__n_estimators'])
         
-        cv_folds = pd.read_csv(os.path.join(CV_path,'CV_folds.csv'))
-        for fold in range(FOLD):
-            ttest = pd.read_csv(os.path.join(CV_path,'fold'+str(fold)+'_t_test_0.10_geneExpr_Unfiltered_bl.csv')).sort_values(groups).reset_index()
-            ranked_feats = ttest.sort_values(groups+'_c')['Unnamed: 0'][0:N]
-            Gene_expr = df[['Unnamed: 0','AGE','PTEDUCAT','DX_bl']+list(ranked_feats)]
-            df_1 = df[df['DX_bl'] == groups.split('_')[0]]
-            df_2 = df[df['DX_bl'] == groups.split('_')[1]]
-            curr_df = pd.concat([df_1, df_2], ignore_index=True)
+    mean_fpr = np.linspace(0, 1, 100)
+    selector = []
+    results = []
+    tprs = []
+    aucs = []
+    acc = []
+    imp = []
+    summary = dict()
+    for train, test in stratified_kfold.split(X_train, y_train):
 
-            X_train_fold_subs = cv_folds[groups+'_fold'+str(fold)+'_train']
-            X_test_fold_subs = cv_folds[groups+'_fold'+str(fold)+'_test']
+        X_train_fold = np.array(X_train.iloc[train])
+        y_train_fold = np.array(y_train[train])
 
-            X_train_fold = curr_df[pd.DataFrame(curr_df['Unnamed: 0'].tolist()).isin(X_train_fold_subs).any(1).values]
-            X_train, y_train = data_prep(X_train_fold,groups)
-            X_test_fold = curr_df[pd.DataFrame(curr_df['Unnamed: 0'].tolist()).isin(X_train_fold_subs).any(1).values]
-            X_test, y_test = data_prep(X_test_fold,groups)
+        X_test_fold = np.array(X_train.iloc[test])
+        y_test_fold = np.array(y_train[test])
 
-            X_train_fold = np.array(X_train)
-            y_train_fold = np.array(y_train)
+        oversample = SMOTE(sampling_strategy=sampling, k_neighbors=7,random_state=seed)
+        X_train_fold, y_train_fold = oversample.fit_resample(X_train_fold, y_train_fold)
 
-            X_test_fold = np.array(X_test)
-            y_test_fold = np.array(y_test)
-
-            oversample = SMOTE(sampling_strategy=sampling, k_neighbors=7,random_state=seed)
-            X_train_fold, y_train_fold = oversample.fit_resample(X_train_fold, y_train_fold)
-
-            if pruning == 'prune':
-                if feature_selection == 'RFECV':
-                    selector_fold = pipeline.named_steps['featureSelection'].fit(X_train_fold, y_train_fold).support_ 
+        if pruning == 'prune':
+            if feature_selection == 'RFECV':
+                selector_fold = pipeline.named_steps['featureSelection'].fit(X_train_fold, y_train_fold).support_ 
             elif feature_selection == 'fromModel':
                 selector_fold = pipeline.named_steps['featureSelection'].fit(X_train_fold, y_train_fold).get_support()
             X_train_fold = X_train_fold[:,selector_fold]
