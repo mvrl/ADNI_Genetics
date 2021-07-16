@@ -53,8 +53,6 @@ def train_val(groups,features, feature_selection, classifier = 'xgb',smote='corr
     overall_summary = []
     for hp in params: #Perform the entire process for each combination of hyper parameters
         fname = '_'.join([groups,classifier,str(features),pruning,feature_selection,smote])
-        print(fname)
-        print('for parameters:',hp)
 
         if classifier  == 'xgb':
             n_estimators = hp[0]
@@ -213,7 +211,7 @@ if  __name__ == '__main__':
     HyperParameters.groups = ['CN_AD']
     HyperParameters.classifier = ['xgb']
     HyperParameters.smote = ['correct'] 
-    HyperParameters.features= [100,200,300,500,750,1000]
+    HyperParameters.features= [50,100,200,300,500,750,1000]
     HyperParameters.pruning = ['prune','no_prune']
     HyperParameters.feature_selection = ['fromModel']#,'RFECV'] #RFECV is TOOO SLOW :(
     HyperParameters.params = [HyperParameters.groups,HyperParameters.classifier,HyperParameters.smote,HyperParameters.features,HyperParameters.pruning,HyperParameters.feature_selection]  

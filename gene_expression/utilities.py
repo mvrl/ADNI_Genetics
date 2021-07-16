@@ -122,17 +122,20 @@ def importance_extractor(original_cols,summary):
         sel_feats_count.append(len(sel_col))
     avg_no_sel_features = int(np.mean(np.array(sel_feats_count)))
     
-    common_feats = set(selected_feats[0]).intersection(*selected_feats)
+    common_feats = list(set(selected_feats[0]).intersection(*selected_feats))
     avg_imp = []
+    imp_df = pd.DataFrame(columns =['features', 'importance'])
     for feat in common_feats:
         imps = []
         for fold in range(FOLDS):
             feat_idx = selected_feats_dict[fold]['features'].index(feat)
             imps.append(selected_feats_dict[fold]['importance'][feat_idx]) 
         avg_imp.append((feat,np.mean(np.array(imps))))
-
-        imp_df = pd.DataFrame(avg_imp, columns =['features', 'importance'])
+    if len(common_feats) > 0:
+        imp_df['features'] = common_feats
+        imp_df['importance'] = avg_imp
         imp_df = imp_df.sort_values(by=['importance'],ascending=False)
 
     return imp_df, avg_no_sel_features
+
 
