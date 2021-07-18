@@ -38,9 +38,13 @@ def save_results(ax,imp_df,tprs, mean_fpr,aucs,accs,results_path,avg_no_sel_feat
     imp_df.to_csv(os.path.join(results_path,'Features_ranked_for'+'_'+fname+'.csv'))
 
 
-def importance_extractor(original_cols,summary):
-    #This extracts the average importance of the common features selected in each folds by RFE
+def importance_extractor(original_cols,summary,results_path,fname):
+    #This extracts the average importance of the seperate as well as common features selected in each folds by RFE
     FOLDS = len(summary['features'])
+    imp_df_whole_cols = []
+    for f in range(FOLDS):
+        imp_df_whole_cols = imp_df_whole_cols + ['features_fold'+str(f),'importance_fold'+str(f)]
+    imp_df_whole = pd.DataFrame(columns =imp_df_whole_cols)
     selectors = summary['features']
     selected_feats_dict = []
     selected_feats = []
@@ -48,11 +52,13 @@ def importance_extractor(original_cols,summary):
     for fold in range(FOLDS):
         sel_col = [x for x, y in zip(original_cols, summary['features'][fold]) if y] #selected features for each fold
         sel_feat_dict = {'features':sel_col,'importance':summary['importance'][fold]} #Importance for the selected features
+        imp_df_whole['features_fold'+str(fold)] = pd.Series(sel_col)
+        imp_df_whole['importance_fold'+str(fold)] = pd.Series(summary['importance'][fold])
         selected_feats.append(sel_col)
         selected_feats_dict.append(sel_feat_dict)
         sel_feats_count.append(len(sel_col))
     avg_no_sel_features = int(np.mean(np.array(sel_feats_count)))
-    
+    imp_df_whole.to_csv(os.path.join(results_path,fname+"_whole_imp.csv"))
     common_feats = list(set(selected_feats[0]).intersection(*selected_feats))
     avg_imp = []
     imp_df = pd.DataFrame(columns =['features', 'importance'])
