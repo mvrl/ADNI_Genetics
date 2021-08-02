@@ -190,9 +190,9 @@ if  __name__ == '__main__':
     HyperParameters.groups = ['CN_AD','CN_EMCI','CN_LMCI','EMCI_LMCI','EMCI_AD','LMCI_AD']  
     HyperParameters.classifier = ['xgb']
     HyperParameters.smote = ['correct'] 
-    HyperParameters.features= [50,100,200,300,400,500]
-    HyperParameters.pruning = ['prune']#,'no_prune']
-    HyperParameters.feature_selection = ['RFE']#,'fromModel'] 
+    HyperParameters.features= [25,50,100,200,300,400,500]
+    HyperParameters.pruning = ['prune','no_prune']
+    HyperParameters.feature_selection = ['fromModel'] 
     HyperParameters.params = [HyperParameters.groups,HyperParameters.classifier,HyperParameters.smote,HyperParameters.features,HyperParameters.pruning,HyperParameters.feature_selection]  
     if args.tuning == 'sweep':
         final_result = pd.DataFrame(columns = ['Group', 'Label_distribution','classifier','smote','initial_feats','Pruning','feature_selection','final_feats','best_params','Macro_ACC','Macro_AUC'])
@@ -215,4 +215,4 @@ if  __name__ == '__main__':
                                                 'Macro_ACC':acc,'Macro_AUC':auc},
                                                 ignore_index = True)
         
-        final_result.to_csv(os.path.join(results_path,'sweep_results_RFE.csv'))
+        final_result.to_csv(os.path.join(results_path,'sweep_results.csv'))

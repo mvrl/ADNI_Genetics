@@ -117,6 +117,13 @@ def train_val(groups,features, feature_selection, classifier = 'xgb',smote='corr
 
             num_cols = ['AGE','EDU']
             original_cols = list(X_train.columns)
+            print("For fold",fold)
+            print("Train:")
+            print(Counter(y_train))
+
+            print("test:")
+            print(Counter(y_test))
+
     
             cat_columns_index = [i for i in range(len(original_cols)) if original_cols[i] not in num_cols]
              ############################### SMOTE to balance training fold ######################################################
@@ -216,7 +223,7 @@ if  __name__ == '__main__':
     HyperParameters.smote = ['correct'] 
     HyperParameters.features= [25,50,100,200,300,500,750,1000]
     HyperParameters.pruning = ['prune','no_prune']
-    HyperParameters.feature_selection = ['RFE']#,'fromModel'] 
+    HyperParameters.feature_selection = ['RFE']
     HyperParameters.params = [HyperParameters.groups,HyperParameters.classifier,HyperParameters.smote,HyperParameters.features,HyperParameters.pruning,HyperParameters.feature_selection]  
     if args.tuning == 'sweep':
         final_result = pd.DataFrame(columns = ['Group','classifier','smote','initial_feats','Pruning','feature_selection','final_feats','best_params','Macro_ACC','Macro_AUC'])
@@ -239,4 +246,4 @@ if  __name__ == '__main__':
                                                 'Macro_ACC':acc,'Macro_AUC':auc},
                                                 ignore_index = True)
         
-        final_result.to_csv(os.path.join(results_path,'sweep_results_RFE.csv'))
+        final_result.to_csv(os.path.join(results_path,'sweep_results.csv'))
