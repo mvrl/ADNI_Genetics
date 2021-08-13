@@ -26,10 +26,10 @@ SEED = 11
 FOLDS = 5
 root_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/Genomics/'
 CV_path = '/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/Genomics/data/GWAS/CN_AD/cv_folds/'
-RESULTS = 'results'
+RESULTS = 'results2'
 results_path=os.path.join(root_path,RESULTS)
 ############################################################################################
-def train_val(groups,features, feature_selection, classifier = 'xgb',smote='correct',pruning='prune',seed=11):
+def train_val(groups,features, extra, feature_selection, classifier = 'xgb',smote='correct',pruning='prune',seed=11):
     N = features
     step = int(features/20)
     if N < 50:
@@ -79,7 +79,13 @@ def train_val(groups,features, feature_selection, classifier = 'xgb',smote='corr
             if 'Unnamed: 0' in train_df.columns:
                 train_df = train_df.drop(columns=['Unnamed: 0'])
             drop_cols = ['nan','00']
-            keep_cols = ['PTID','AGE','EDU','DIAG']
+            if extra == 'extra':
+                keep_cols = ['PTID','AGE','EDU','DIAG']
+            else:
+                train_df = train_df.drop(columns=['AGE','EDU'])
+                train_df['dummy'] = np.ones(len(train_df),) ##Just because SMOTENC requires at least 1 numerical column
+                keep_cols = ['PTID','DIAG', 'dummy']
+                
             train_snp_cols = [col for col in list(train_df.columns) if col not in keep_cols]
             train_cols_keep = [col for col in train_snp_cols if col.split('_')[2] not in drop_cols]
 
@@ -88,9 +94,11 @@ def train_val(groups,features, feature_selection, classifier = 'xgb',smote='corr
             test_df = pd.read_csv(os.path.join(CV_path,'fold'+str(fold),'test','QualityControl','final_SNP_data.csv'))
             if 'Unnamed: 0' in test_df.columns:
                 test_df = test_df.drop(columns=['Unnamed: 0'])
-            test_snp_cols = [col for col in list(test_df.columns) if col not in keep_cols]
+            test_snp_cols = [col for col in list(test_df.columns) if 'rs' in col]
             test_cols_keep = [col for col in test_snp_cols if col.split('_')[2] not in drop_cols]
-            test_df = test_df[list(keep_cols)+list(test_cols_keep)]
+            overall_test_cols = keep_cols + test_cols_keep
+            overall_test_cols.remove("dummy")
+            test_df = test_df.loc[:,overall_test_cols]
         
             snp_rank = pd.read_csv(os.path.join(CV_path,'fold'+str(fold),'top2000_snps.csv'))['top_snps'] #Ranked list of snps after running GWAS on training fold
         
@@ -101,9 +109,12 @@ def train_val(groups,features, feature_selection, classifier = 'xgb',smote='corr
 
             #Just for the case: some features might be missing between test and train while dropping NAN columns so
             top_snp_feats = list(set(top_snp_feats_train).intersection(set(top_snp_feats_test)))
-            Gwas_train = train_df[['PTID','AGE','EDU','DIAG']+list(top_snp_feats)]
-            Gwas_test = test_df[['PTID','AGE','EDU','DIAG']+list(top_snp_feats)]
-
+            if extra == 'extra':
+                Gwas_train = train_df[['PTID','AGE','EDU','DIAG']+list(top_snp_feats)]
+                Gwas_test = test_df[['PTID','AGE','EDU','DIAG']+list(top_snp_feats)]
+            else:
+                Gwas_train = train_df[['PTID','DIAG','dummy']+list(top_snp_feats)]
+                Gwas_test = test_df[['PTID','DIAG']+list(top_snp_feats)]
             y_train = Gwas_train.DIAG
             X_train = Gwas_train.drop(columns=['PTID','DIAG']).reset_index(drop=True) #Patient ID and DIAG not needed  
 
@@ -115,7 +126,10 @@ def train_val(groups,features, feature_selection, classifier = 'xgb',smote='corr
             X_test_fold = np.array(X_test)
             y_test_fold = np.array(y_test)
 
-            num_cols = ['AGE','EDU']
+            if extra == 'extra':
+                num_cols = ['AGE','EDU']
+            else:
+                num_cols = ['dummy'] #Just because SMOTENC requires at least 1 numerical column
             original_cols = list(X_train.columns)
             print("For fold",fold)
             print("Train:")
@@ -129,6 +143,7 @@ def train_val(groups,features, feature_selection, classifier = 'xgb',smote='corr
              ############################### SMOTE to balance training fold ######################################################
             oversample = SMOTENC(sampling_strategy=SAMPLING, k_neighbors=7,categorical_features = cat_columns_index,random_state=seed)
             X_train_fold, y_train_fold = oversample.fit_resample(X_train_fold, y_train_fold)
+            X_train_fold = X_train_fold[:,1:]
              ############################### Model based feature selection ######################################################
             if pruning == 'prune':
                 if feature_selection == 'RFE':
@@ -158,12 +173,15 @@ def train_val(groups,features, feature_selection, classifier = 'xgb',smote='corr
             #print("for hp:",hp)
             #print("Performance for fold:",fold," ACC:",acc," AUC:",roc_auc)
         overall_summary.append(summary)
+
+        if extra != 'extra':
+            original_cols.remove('dummy')
     return overall_summary, original_cols
 
-def run_ADNI(groups='CN_AD',features=1000,feature_selection='RFE',classifier = 'xgb',smote='correct',pruning='prune'):
+def run_ADNI(groups='CN_AD',features=1000,extra='extra',feature_selection='RFE',classifier = 'xgb',smote='correct',pruning='prune'):
     
     fname = '_'.join([groups,classifier,str(features),pruning,feature_selection,smote])
-    summary,original_cols= train_val(groups,features = features,feature_selection=feature_selection,classifier = classifier,smote=smote,pruning=pruning,seed=SEED)
+    summary,original_cols= train_val(groups,features = features,extra=extra,feature_selection=feature_selection,classifier = classifier,smote=smote,pruning=pruning,seed=SEED)
     overall_results = []
     for hp in range(len(summary)):
          #Finding best results and hyper parameters
@@ -199,10 +217,12 @@ if  __name__ == '__main__':
     parser.add_argument('--classifier', type=str, help='Classifier Options:[xgb,GradientBoosting]', default='xgb')
     parser.add_argument('--smote', type=str, help='Classifier Options:[correct,incorrect]', default='correct')
     parser.add_argument('--features', type=int, help='Number of features to be used', default=100)
+    parser.add_argument('--extra', type=str, help='add [AGE,EDU] or not.Options:[extra,not_extra]', default='extra')
     parser.add_argument('--feature_selection', type=str, help='Type of feature selection. Options:[RFE,fromModel]', default='fromModel')
     parser.add_argument('--pruning', type=str, help='Do pruning of features or not. Options:[prune,no_prune]', default='prune')
     parser.add_argument('--groups', type=str, help='binary classes to be classified ', default='CN_AD')
-    parser.add_argument('--tuning', type=str, help='To perform hyperparameter sweep or not. Options:[sweep, no_sweep]', default='no_sweep')    
+    parser.add_argument('--tuning', type=str, help='To perform hyperparameter sweep or not. Options:[sweep, no_sweep]', default='no_sweep')
+    parser.add_argument('--fname', type=str, help='filename to save sweep results', default='sweep_results.csv')       
     args = parser.parse_args()
     
     if args.tuning == 'no_sweep':
@@ -211,6 +231,7 @@ if  __name__ == '__main__':
                 feature_selection = args.feature_selection,
                 smote = args.smote,
                 features=args.features,
+                extra = args.extra,
                 pruning=args.pruning,
                 groups = args.groups       
                )
@@ -221,12 +242,13 @@ if  __name__ == '__main__':
     HyperParameters.groups = ['CN_AD']
     HyperParameters.classifier = ['xgb']
     HyperParameters.smote = ['correct'] 
-    HyperParameters.features= [25,50,100,200,300,500,750,1000]
+    HyperParameters.features= [25,50,100,200,300,400,500]
+    HyperParameters.extra = ['not_extra']
     HyperParameters.pruning = ['prune','no_prune']
     HyperParameters.feature_selection = ['RFE']
-    HyperParameters.params = [HyperParameters.groups,HyperParameters.classifier,HyperParameters.smote,HyperParameters.features,HyperParameters.pruning,HyperParameters.feature_selection]  
+    HyperParameters.params = [HyperParameters.groups,HyperParameters.classifier,HyperParameters.smote,HyperParameters.features,HyperParameters.extra,HyperParameters.pruning,HyperParameters.feature_selection]  
     if args.tuning == 'sweep':
-        final_result = pd.DataFrame(columns = ['Group','classifier','smote','initial_feats','Pruning','feature_selection','final_feats','best_params','Macro_ACC','Macro_AUC'])
+        final_result = pd.DataFrame(columns = ['Group','classifier','smote','initial_feats','extra','Pruning','feature_selection','final_feats','best_params','Macro_ACC','Macro_AUC'])
         params = list(itertools.product(*HyperParameters.params))
         for hp in params:
             print("For parameters:",hp)
@@ -234,16 +256,17 @@ if  __name__ == '__main__':
                 groups = hp[0],  
                 classifier = hp[1],
                 smote = hp[2],
-                features=hp[3],         
-                pruning=hp[4],
-                feature_selection = hp[5]       
+                features=hp[3],
+                extra = hp[4],         
+                pruning=hp[5],
+                feature_selection = hp[6]       
                )
             print(acc, auc)
             print('\n')
 
             final_result = final_result.append({'Group':hp[0],'classifier':hp[1],'smote':hp[2],
-                                                'initial_feats':hp[3],'Pruning':hp[4],'feature_selection':hp[5],'final_feats':avg_no_sel_features,'best_params':best_params,
+                                                'initial_feats':hp[3],'extra':hp[4],'Pruning':hp[5],'feature_selection':hp[6],'final_feats':avg_no_sel_features,'best_params':best_params,
                                                 'Macro_ACC':acc,'Macro_AUC':auc},
                                                 ignore_index = True)
         
-        final_result.to_csv(os.path.join(results_path,'sweep_results.csv'))
+        final_result.to_csv(os.path.join(results_path,args.fname))

@@ -26,10 +26,10 @@ SEED = 11
 FOLDS = 5
 root_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/'
 CV_path = '/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/gene_expression/data'
-RESULTS = 'results'
+RESULTS = 'results2'
 results_path=os.path.join(root_path,RESULTS)
 ############################################################################################
-def train_val(groups,features, feature_selection, classifier = 'xgb',smote='correct',pruning='prune',seed=11):
+def train_val(groups,features,extra,feature_selection, classifier = 'xgb',smote='correct',pruning='prune',seed=11):
 
     N = features
     step = int(features/20)
@@ -52,7 +52,7 @@ def train_val(groups,features, feature_selection, classifier = 'xgb',smote='corr
     params = list(itertools.product(*HyperParameters.params))
     overall_summary = []
     for hp in params: #Perform the entire process for each combination of hyper parameters
-        fname = '_'.join([groups,classifier,str(features),pruning,feature_selection,smote])
+        fname = '_'.join([groups,classifier,str(features),extra,pruning,feature_selection,smote])
 
         if classifier  == 'xgb':
             n_estimators = hp[0]
@@ -77,7 +77,10 @@ def train_val(groups,features, feature_selection, classifier = 'xgb',smote='corr
             ############################### T-test based feature selection ######################################################
             ttest = pd.read_csv(os.path.join(CV_path,'fold'+str(fold)+'_t_test_0.10_geneExpr_Unfiltered_bl.csv')).sort_values(groups).reset_index()
             ranked_feats = ttest.sort_values(groups+'_c')['Unnamed: 0'][0:N]
-            Gene_expr = df[['Unnamed: 0','AGE','PTEDUCAT','DX_bl']+list(ranked_feats)]
+            if extra == 'extra':
+                Gene_expr = df[['Unnamed: 0','AGE','PTEDUCAT','DX_bl']+list(ranked_feats)]
+            else:
+                Gene_expr = df[['Unnamed: 0','DX_bl']+list(ranked_feats)]
             df_1 = Gene_expr[Gene_expr['DX_bl'] == groups.split('_')[0]]
             df_2 = Gene_expr[Gene_expr['DX_bl'] == groups.split('_')[1]]
             curr_df = pd.concat([df_1, df_2], ignore_index=True)
@@ -129,10 +132,10 @@ def train_val(groups,features, feature_selection, classifier = 'xgb',smote='corr
         overall_summary.append(summary)
     return overall_summary, original_cols, Counter(y)
 
-def run_ADNI(groups='CN_AD',features=1000,feature_selection='RFE',classifier = 'xgb',smote='correct',pruning='prune'):
+def run_ADNI(groups='CN_AD',features=1000,extra='extra',feature_selection='RFE',classifier = 'xgb',smote='correct',pruning='prune'):
     
     fname = '_'.join([groups,classifier,str(features),pruning,feature_selection,smote])
-    summary, original_cols, label_dist = train_val(groups,features = features,feature_selection=feature_selection,classifier = classifier,smote=smote,pruning=pruning,seed=SEED)
+    summary, original_cols, label_dist = train_val(groups,features = features,extra=extra,feature_selection=feature_selection,classifier = classifier,smote=smote,pruning=pruning,seed=SEED)
     overall_results = []
     for hp in range(len(summary)):
          #Finding best results and hyper parameters
@@ -168,10 +171,12 @@ if  __name__ == '__main__':
     parser.add_argument('--classifier', type=str, help='Classifier Options:[xgb,GradientBoosting]', default='xgb')
     parser.add_argument('--smote', type=str, help='Classifier Options:[correct,incorrect]', default='correct')
     parser.add_argument('--features', type=int, help='Number of features to be used', default=100)
+    parser.add_argument('--extra', type=str, help='add [AGE,EDU] or not.Options:[extra,not_extra]', default='extra')
     parser.add_argument('--feature_selection', type=str, help='Type of feature selection. Options:[RFE,fromModel]', default='fromModel')
     parser.add_argument('--pruning', type=str, help='Do pruning of features or not. Options:[prune,no_prune]', default='prune')
     parser.add_argument('--groups', type=str, help='binary classes to be classified ', default='CN_AD')
-    parser.add_argument('--tuning', type=str, help='To perform hyperparameter sweep or not. Options:[sweep, no_sweep]', default='no_sweep')    
+    parser.add_argument('--tuning', type=str, help='To perform hyperparameter sweep or not. Options:[sweep, no_sweep]', default='no_sweep')
+    parser.add_argument('--fname', type=str, help='filename to save sweep results', default='sweep_results.csv')    
     args = parser.parse_args()
     
     if args.tuning == 'no_sweep':
@@ -180,6 +185,7 @@ if  __name__ == '__main__':
                 feature_selection = args.feature_selection,
                 smote = args.smote,
                 features=args.features,
+                extra = args.extra,
                 pruning=args.pruning,
                 groups = args.groups       
                )
@@ -191,11 +197,12 @@ if  __name__ == '__main__':
     HyperParameters.classifier = ['xgb']
     HyperParameters.smote = ['correct'] 
     HyperParameters.features= [25,50,100,200,300,400,500]
+    HyperParameters.extra = ['not_extra']
     HyperParameters.pruning = ['prune','no_prune']
     HyperParameters.feature_selection = ['fromModel'] 
-    HyperParameters.params = [HyperParameters.groups,HyperParameters.classifier,HyperParameters.smote,HyperParameters.features,HyperParameters.pruning,HyperParameters.feature_selection]  
+    HyperParameters.params = [HyperParameters.groups,HyperParameters.classifier,HyperParameters.smote,HyperParameters.features,HyperParameters.extra,HyperParameters.pruning,HyperParameters.feature_selection]  
     if args.tuning == 'sweep':
-        final_result = pd.DataFrame(columns = ['Group', 'Label_distribution','classifier','smote','initial_feats','Pruning','feature_selection','final_feats','best_params','Macro_ACC','Macro_AUC'])
+        final_result = pd.DataFrame(columns = ['Group', 'Label_distribution','classifier','smote','initial_feats','extra','Pruning','feature_selection','final_feats','best_params','Macro_ACC','Macro_AUC'])
         params = list(itertools.product(*HyperParameters.params))
         for hp in params:
             print("For parameters:",hp)
@@ -203,16 +210,17 @@ if  __name__ == '__main__':
                 groups = hp[0],  
                 classifier = hp[1],
                 smote = hp[2],
-                features=hp[3],         
-                pruning=hp[4],
-                feature_selection = hp[5]       
+                features=hp[3],
+                extra = hp[4],
+                pruning=hp[5],
+                feature_selection = hp[6]       
                )
             print(acc, auc)
             print('\n')
 
             final_result = final_result.append({'Group':hp[0], 'Label_distribution':label_dist,'classifier':hp[1],'smote':hp[2],
-                                                'initial_feats':hp[3],'Pruning':hp[4],'feature_selection':hp[5],'final_feats':avg_no_sel_features,'best_params':best_params,
+                                                'initial_feats':hp[3],'extra':hp[4],'Pruning':hp[5],'feature_selection':hp[6],'final_feats':avg_no_sel_features,'best_params':best_params,
                                                 'Macro_ACC':acc,'Macro_AUC':auc},
                                                 ignore_index = True)
         
-        final_result.to_csv(os.path.join(results_path,'sweep_results.csv'))
+        final_result.to_csv(os.path.join(results_path,args.fname))
