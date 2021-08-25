@@ -26,7 +26,7 @@ SEED = 11
 FOLDS = 5
 root_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/Genomics/'
 CV_path = '/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/Genomics/data/GWAS/CN_AD/cv_folds/'
-RESULTS = 'results2'
+RESULTS = 'results_final'
 results_path=os.path.join(root_path,RESULTS)
 ############################################################################################
 def train_val(groups,features, extra, feature_selection, classifier = 'xgb',smote='correct',pruning='prune',seed=11):
@@ -72,6 +72,7 @@ def train_val(groups,features, extra, feature_selection, classifier = 'xgb',smot
         aucs = []
         acc = []
         imp = []
+        original_cols = []
         summary = dict()
         for fold in range(FOLDS):
             ############################### Plink based feature selected data ######################################################
@@ -83,7 +84,7 @@ def train_val(groups,features, extra, feature_selection, classifier = 'xgb',smot
                 keep_cols = ['PTID','AGE','EDU','DIAG']
             else:
                 train_df = train_df.drop(columns=['AGE','EDU'])
-                train_df['dummy'] = np.ones(len(train_df),) ##Just because SMOTENC requires at least 1 numerical column
+                train_df['dummy'] = np.ones(len(train_df),) ##Hack Just because SMOTENC requires at least 1 numerical column
                 keep_cols = ['PTID','DIAG', 'dummy']
                 
             train_snp_cols = [col for col in list(train_df.columns) if col not in keep_cols]
@@ -97,7 +98,8 @@ def train_val(groups,features, extra, feature_selection, classifier = 'xgb',smot
             test_snp_cols = [col for col in list(test_df.columns) if 'rs' in col]
             test_cols_keep = [col for col in test_snp_cols if col.split('_')[2] not in drop_cols]
             overall_test_cols = keep_cols + test_cols_keep
-            overall_test_cols.remove("dummy")
+            if extra != 'extra':
+                overall_test_cols.remove("dummy")
             test_df = test_df.loc[:,overall_test_cols]
         
             snp_rank = pd.read_csv(os.path.join(CV_path,'fold'+str(fold),'top2000_snps.csv'))['top_snps'] #Ranked list of snps after running GWAS on training fold
@@ -130,7 +132,8 @@ def train_val(groups,features, extra, feature_selection, classifier = 'xgb',smot
                 num_cols = ['AGE','EDU']
             else:
                 num_cols = ['dummy'] #Just because SMOTENC requires at least 1 numerical column
-            original_cols = list(X_train.columns)
+            original_cols_fold = list(X_train.columns)
+            original_cols.append(original_cols_fold)
             print("For fold",fold)
             print("Train:")
             print(Counter(y_train))
@@ -139,11 +142,12 @@ def train_val(groups,features, extra, feature_selection, classifier = 'xgb',smot
             print(Counter(y_test))
 
     
-            cat_columns_index = [i for i in range(len(original_cols)) if original_cols[i] not in num_cols]
+            cat_columns_index = [i for i in range(len(original_cols_fold)) if original_cols_fold[i] not in num_cols]
              ############################### SMOTE to balance training fold ######################################################
             oversample = SMOTENC(sampling_strategy=SAMPLING, k_neighbors=7,categorical_features = cat_columns_index,random_state=seed)
             X_train_fold, y_train_fold = oversample.fit_resample(X_train_fold, y_train_fold)
-            X_train_fold = X_train_fold[:,1:]
+            if extra != 'extra':
+                X_train_fold = X_train_fold[:,1:] #remove dummy features
              ############################### Model based feature selection ######################################################
             if pruning == 'prune':
                 if feature_selection == 'RFE':
@@ -218,7 +222,7 @@ if  __name__ == '__main__':
     parser.add_argument('--smote', type=str, help='Classifier Options:[correct,incorrect]', default='correct')
     parser.add_argument('--features', type=int, help='Number of features to be used', default=100)
     parser.add_argument('--extra', type=str, help='add [AGE,EDU] or not.Options:[extra,not_extra]', default='extra')
-    parser.add_argument('--feature_selection', type=str, help='Type of feature selection. Options:[RFE,fromModel]', default='fromModel')
+    parser.add_argument('--feature_selection', type=str, help='Type of feature selection. Options:[RFE,fromModel]', default='RFE')
     parser.add_argument('--pruning', type=str, help='Do pruning of features or not. Options:[prune,no_prune]', default='prune')
     parser.add_argument('--groups', type=str, help='binary classes to be classified ', default='CN_AD')
     parser.add_argument('--tuning', type=str, help='To perform hyperparameter sweep or not. Options:[sweep, no_sweep]', default='no_sweep')

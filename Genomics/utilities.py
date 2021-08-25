@@ -50,7 +50,7 @@ def importance_extractor(original_cols,summary,results_path,fname):
     selected_feats = []
     sel_feats_count = []
     for fold in range(FOLDS):
-        sel_col = [x for x, y in zip(original_cols, summary['features'][fold]) if y] #selected features for each fold
+        sel_col = [x for x, y in zip(original_cols[fold], summary['features'][fold]) if y] #selected features for each fold
         sel_feat_dict = {'features':sel_col,'importance':summary['importance'][fold]} #Importance for the selected features
         imp_df_whole['features_fold'+str(fold)] = pd.Series(sel_col)
         imp_df_whole['importance_fold'+str(fold)] = pd.Series(summary['importance'][fold])

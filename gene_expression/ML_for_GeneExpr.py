@@ -26,7 +26,7 @@ SEED = 11
 FOLDS = 5
 root_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/'
 CV_path = '/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/gene_expression/data'
-RESULTS = 'results2'
+RESULTS = 'results_final'
 results_path=os.path.join(root_path,RESULTS)
 ############################################################################################
 def train_val(groups,features,extra,feature_selection, classifier = 'xgb',smote='correct',pruning='prune',seed=11):
@@ -73,6 +73,7 @@ def train_val(groups,features,extra,feature_selection, classifier = 'xgb',smote=
         summary = dict()
         df = pd.read_csv(os.path.join(CV_path,'Unfiltered_gene_expr_dx.csv')) #Original data
         cv_folds = pd.read_csv(os.path.join(CV_path,'CV_folds.csv'))
+        original_cols = []
         for fold in range(FOLDS):
             ############################### T-test based feature selection ######################################################
             ttest = pd.read_csv(os.path.join(CV_path,'fold'+str(fold)+'_t_test_0.10_geneExpr_Unfiltered_bl.csv')).sort_values(groups).reset_index()
@@ -92,7 +93,8 @@ def train_val(groups,features,extra,feature_selection, classifier = 'xgb',smote=
             X_train, y_train = data_prep(X_train_fold,groups)
             X_test_fold = curr_df[pd.DataFrame(curr_df['Unnamed: 0'].tolist()).isin(X_test_fold_subs).any(1).values]
             X_test, y_test = data_prep(X_test_fold,groups)
-            original_cols = [col for col in X_train.columns] 
+            original_cols_fold = [col for col in X_train.columns]
+            original_cols.append(original_cols_fold)
 
             X_train_fold = np.array(X_train)
             y_train_fold = np.array(y_train)
