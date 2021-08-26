@@ -230,7 +230,7 @@ if  __name__ == '__main__':
             print('\n')
 
             final_result = final_result.append({'Group':hp[0], 'Label_distribution':label_dist,'classifier':hp[1],'smote':hp[2],
-                                                'initial_feats':hp[3],'extra':hp[4],'Pruning':hp[5],'feature_selection':hp[6],'final_feats':avg_no_sel_features,'best_params':best_params,
+                                                'initial_feats':hp[4],'extra':hp[5],'Pruning':hp[6],'feature_selection':hp[7],'final_feats':avg_no_sel_features,'best_params':best_params,
                                                 'Macro_ACC':acc,'Macro_AUC':auc},
                                                 ignore_index = True)
         

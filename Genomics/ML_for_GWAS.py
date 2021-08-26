@@ -188,7 +188,7 @@ def train_val(groups,features, extra, feature_selection, classifier = 'xgb',smot
 def run_ADNI(groups='CN_AD',features=1000,extra='extra',feature_selection='RFE',classifier = 'xgb',smote='correct',data_leakage = 'false',pruning='prune'):
     
     fname = '_'.join([groups,classifier,str(features),pruning,feature_selection,smote])
-    summary,original_cols= train_val(groups,features = features,extra=extra,feature_selection=feature_selection,classifier = classifier,smote=smote,pruning=pruning,seed=SEED)
+    summary,original_cols= train_val(groups,features = features,extra=extra,feature_selection=feature_selection,classifier = classifier,smote=smote,data_leakage = data_leakage,pruning=pruning,seed=SEED)
     overall_results = []
     for hp in range(len(summary)):
          #Finding best results and hyper parameters
@@ -276,7 +276,7 @@ if  __name__ == '__main__':
             print('\n')
 
             final_result = final_result.append({'Group':hp[0],'classifier':hp[1],'smote':hp[2],
-                                                'initial_feats':hp[3],'extra':hp[4],'Pruning':hp[5],'feature_selection':hp[6],'final_feats':avg_no_sel_features,'best_params':best_params,
+                                                'initial_feats':hp[4],'extra':hp[5],'Pruning':hp[6],'feature_selection':hp[7],'final_feats':avg_no_sel_features,'best_params':best_params,
                                                 'Macro_ACC':acc,'Macro_AUC':auc},
                                                 ignore_index = True)
         
