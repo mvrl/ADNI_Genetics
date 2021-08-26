@@ -9,5 +9,4 @@ It involves:
 
 3. ML on Gene Expression data
 
-4. ML on Combined (GWAS and Gene Expression data)
 
