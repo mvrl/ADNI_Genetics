@@ -26,10 +26,10 @@ SEED = 11
 FOLDS = 5
 root_path = '/home/skh259/LinLab/LinLab/ADNI_Genetics/gene_expression/'
 CV_path = '/mnt/gpfs2_16m/pscratch/nja224_uksr/SKH259/LinLab/ADNI_Genetics/gene_expression/data'
-RESULTS = 'results_final'
+RESULTS = 'results_inflated'
 results_path=os.path.join(root_path,RESULTS)
 ############################################################################################
-def train_val(groups,features,extra,feature_selection, classifier = 'xgb',smote='correct',pruning='prune',seed=11):
+def train_val(groups,features,extra,feature_selection, classifier = 'xgb',smote='correct',data_leakage='false',pruning='prune',seed=11):
 
     N = features
     step = int(features/20)
@@ -76,8 +76,13 @@ def train_val(groups,features,extra,feature_selection, classifier = 'xgb',smote=
         original_cols = []
         for fold in range(FOLDS):
             ############################### T-test based feature selection ######################################################
-            ttest = pd.read_csv(os.path.join(CV_path,'fold'+str(fold)+'_t_test_0.10_geneExpr_Unfiltered_bl.csv')).sort_values(groups).reset_index()
-            ranked_feats = ttest.sort_values(groups+'_c')['Unnamed: 0'][0:N]
+            if data_leakage == 'false': #correct way, ttest from current training fold only
+                ttest = pd.read_csv(os.path.join(CV_path,'fold'+str(fold)+'_t_test_0.10_geneExpr_Unfiltered_bl.csv')).sort_values(groups).reset_index()
+                ranked_feats = ttest.sort_values(groups+'_c')['Unnamed: 0'][0:N]
+            else: #Force data leakage by incorrect way of selecting features using whole data
+                ttest = pd.read_csv(os.path.join(CV_path,'t_test_0.10_geneExpr_Unfiltered_bl.csv')).sort_values(groups).reset_index()
+                ranked_feats = ttest.sort_values(groups+'_c')['Gene'][0:N]
+
             if extra == 'extra':
                 Gene_expr = df[['Unnamed: 0','AGE','PTEDUCAT','DX_bl']+list(ranked_feats)]
             else:
@@ -134,10 +139,10 @@ def train_val(groups,features,extra,feature_selection, classifier = 'xgb',smote=
         overall_summary.append(summary)
     return overall_summary, original_cols, Counter(y)
 
-def run_ADNI(groups='CN_AD',features=1000,extra='extra',feature_selection='RFE',classifier = 'xgb',smote='correct',pruning='prune'):
+def run_ADNI(groups='CN_AD',features=1000,extra='extra',feature_selection='RFE',classifier = 'xgb',smote='correct',data_leakage='false',pruning='prune'):
     
     fname = '_'.join([groups,classifier,str(features),pruning,feature_selection,smote])
-    summary, original_cols, label_dist = train_val(groups,features = features,extra=extra,feature_selection=feature_selection,classifier = classifier,smote=smote,pruning=pruning,seed=SEED)
+    summary, original_cols, label_dist = train_val(groups,features = features,extra=extra,feature_selection=feature_selection,classifier = classifier,smote=smote,data_leakage=data_leakage,pruning=pruning,seed=SEED)
     overall_results = []
     for hp in range(len(summary)):
          #Finding best results and hyper parameters
@@ -172,13 +177,14 @@ if  __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--classifier', type=str, help='Classifier Options:[xgb,GradientBoosting]', default='xgb')
     parser.add_argument('--smote', type=str, help='Classifier Options:[correct,incorrect]', default='correct')
+    parser.add_argument('--data_leakage', type=str, help='data leakage:[true,false]', default='false')
     parser.add_argument('--features', type=int, help='Number of features to be used', default=100)
     parser.add_argument('--extra', type=str, help='add [AGE,EDU] or not.Options:[extra,not_extra]', default='extra')
     parser.add_argument('--feature_selection', type=str, help='Type of feature selection. Options:[RFE,fromModel]', default='fromModel')
     parser.add_argument('--pruning', type=str, help='Do pruning of features or not. Options:[prune,no_prune]', default='prune')
     parser.add_argument('--groups', type=str, help='binary classes to be classified ', default='CN_AD')
     parser.add_argument('--tuning', type=str, help='To perform hyperparameter sweep or not. Options:[sweep, no_sweep]', default='no_sweep')
-    parser.add_argument('--fname', type=str, help='filename to save sweep results', default='sweep_results.csv')    
+    parser.add_argument('--fname', type=str, help='filename to save sweep results', default='sweep_results_inflated.csv')    
     args = parser.parse_args()
     
     if args.tuning == 'no_sweep':
@@ -186,6 +192,7 @@ if  __name__ == '__main__':
                 classifier = args.classifier,
                 feature_selection = args.feature_selection,
                 smote = args.smote,
+                data_leakage = args.data_leakage,
                 features=args.features,
                 extra = args.extra,
                 pruning=args.pruning,
@@ -198,11 +205,12 @@ if  __name__ == '__main__':
     HyperParameters.groups = ['CN_AD','CN_EMCI','CN_LMCI','EMCI_LMCI','EMCI_AD','LMCI_AD']  
     HyperParameters.classifier = ['xgb']
     HyperParameters.smote = ['correct'] 
+    HyperParameters.data_leakage = ['true']
     HyperParameters.features= [25,50,100,200,300,400,500]
-    HyperParameters.extra = ['not_extra']
+    HyperParameters.extra = ['extra']
     HyperParameters.pruning = ['prune','no_prune']
     HyperParameters.feature_selection = ['fromModel'] 
-    HyperParameters.params = [HyperParameters.groups,HyperParameters.classifier,HyperParameters.smote,HyperParameters.features,HyperParameters.extra,HyperParameters.pruning,HyperParameters.feature_selection]  
+    HyperParameters.params = [HyperParameters.groups,HyperParameters.classifier,HyperParameters.smote,HyperParameters.data_leakage,HyperParameters.features,HyperParameters.extra,HyperParameters.pruning,HyperParameters.feature_selection]  
     if args.tuning == 'sweep':
         final_result = pd.DataFrame(columns = ['Group', 'Label_distribution','classifier','smote','initial_feats','extra','Pruning','feature_selection','final_feats','best_params','Macro_ACC','Macro_AUC'])
         params = list(itertools.product(*HyperParameters.params))
@@ -212,10 +220,11 @@ if  __name__ == '__main__':
                 groups = hp[0],  
                 classifier = hp[1],
                 smote = hp[2],
-                features=hp[3],
-                extra = hp[4],
-                pruning=hp[5],
-                feature_selection = hp[6]       
+                data_leakage = hp[3],
+                features=hp[4],
+                extra = hp[5],
+                pruning=hp[6],
+                feature_selection = hp[7]       
                )
             print(acc, auc)
             print('\n')
