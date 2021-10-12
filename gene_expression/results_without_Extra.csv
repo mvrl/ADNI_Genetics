@@ -1,7 +1,0 @@
-Group,N,selection,F,best_params,ACC,AUC
-CN_AD,25,ttest,25,"(10, 2)",0.60,0.64
-CN_EMCI,500, ttest,500,"(10, 6)",0.54,0.55
-CN_LMCI,50,ttest,50,"(10, 8)",0.53,0.53
-EMCI_LMCI,200,ttest+fromModel,65,"(60, 2)",0.55,0.53
-EMCI_AD,25, ttest,25,"(10, 8)",0.65,0.67
-LMCI_AD,500,ttest+fromModel,25,"(10, 2)",0.59,0.61
