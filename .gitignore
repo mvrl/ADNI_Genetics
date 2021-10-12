@@ -8,7 +8,6 @@ GWAS_Gene_Expr/
 */results2
 */results_test
 */results_inflated
-*/results_final
 */ML_for_GeneExpr_inflated.py
 */results_test1
 */results_test2
@@ -16,8 +15,7 @@ GWAS_Gene_Expr/
 */results_test
 */*.txt
 */*.log
-*/*.csv
-*/*.ipynb
+
 
 
 
