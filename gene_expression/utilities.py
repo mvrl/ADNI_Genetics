@@ -40,16 +40,7 @@ def data_prep(df,groups):
 
 def GeneExpr_data_prep(groups,root_path,features):
     
-    # N = features
-    # #Gene ranking based on ttest
-    # ttest = read_csv(os.path.join(root_path,'data','t_test_0.10_geneExpr_Unfiltered_bl.csv')).sort_values(groups).reset_index()
-    # important_probes = ttest.sort_values(groups+'_c')['Gene'][0:N] #suffix _c to use the FDR corrected p values 
-    # #CHANGE THE LINE ABOVE ACCORDINGLY FOR DIFFERENT CLASSES
-
-    # #Gene Expression Data
     df = pd.read_csv(os.path.join(root_path,'data','Unfiltered_gene_expr_dx.csv'),low_memory=False)
-    #Gene_expr = df[['Unnamed: 0','AGE','PTEDUCAT','DX_bl']+list(important_probes)]
-    df = Gene_expr
     print('Label distribution of overall data:')
     print(Counter(df.DX_bl))
     df_CN = df[df['DX_bl']=='CN']

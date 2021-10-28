@@ -125,8 +125,6 @@ data_path = os.path.join(analysis_path)
 orig_data_path=root_path+'GWAS_1_2_3_clean_CN_AD'
 
 for fold in range(FOLDS):
-    #train_subs = df['_'.join([group,'fold'+str(fold),'train'])]
-    #data_prep_fold(train_subs,root_path,cv_path,my_merge,fold,'train')
     test_subs = df['_'.join([group,'fold'+str(fold),'test'])]
     data_prep_fold(test_subs,root_path,cv_path,my_merge,fold,'test')
     print("Train test data prepared for fold:",fold)

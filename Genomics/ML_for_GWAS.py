@@ -177,8 +177,7 @@ def train_val(groups,features, extra, feature_selection, classifier = 'xgb',smot
             tprs.append(interp_tpr)
             imp.append(est.feature_importances_)
             summary.update({'params':hp,'features':selector,'results':results,'tprs':tprs,'mean_fpr':mean_fpr,'importance':imp})
-            #print("for hp:",hp)
-            #print("Performance for fold:",fold," ACC:",acc," AUC:",roc_auc)
+            
         overall_summary.append(summary)
 
         if extra != 'extra':
