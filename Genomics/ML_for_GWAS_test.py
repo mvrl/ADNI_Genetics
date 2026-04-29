@@ -33,12 +33,12 @@ def train_ADNI(groups='CN_AD',features=1000,n_estimators=950):
     print("Shape of final data BEFORE FEATURE SELECTION")
     print(df.shape, y.shape)
     fname = '_'.join(['best_test',groups,str(features),str(n_estimators)])
-    rank_df = pd.read_csv(os.path.join(data_path,'results_test','Features_ranked_for_CN_AD_1000_prune.csv'))
+    rank_df = pd.read_csv(os.path.join(data_path,'results_test','Features_ranked_for_'+groups+'_'+str(features)+'_prune.csv'))
     selectors = list(rank_df['features'])
     df = df.loc[:, selectors]
     print("Shape of final data AFTER FEATURE SELECTION")
     print(df.shape, y.shape)
-    print("Label distribution ater final feature selection")
+    print("Label distribution after final feature selection")
     label_dist = Counter(y)
     print(label_dist)
     final_N = df.shape[1]
@@ -72,7 +72,7 @@ def train_ADNI(groups='CN_AD',features=1000,n_estimators=950):
         probas_ = model.fit(X_train, y_train).predict_proba(X_test)
         y_pred = model.predict(X_test)
         acc.append(balanced_accuracy_score(y_test, y_pred))
-        fpr, tpr, thresholds = roc_curve(y_test, probas_[:, 1],drop_intermediate='False')
+        fpr, tpr, thresholds = roc_curve(y_test, probas_[:, 1], drop_intermediate=False)
         roc_auc = roc_auc_score(y_test, probas_[:, 1])
         interp_tpr = np.interp(mean_fpr, fpr, tpr)
         interp_tpr[0] = 0.0
